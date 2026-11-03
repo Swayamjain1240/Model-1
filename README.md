@@ -89,7 +89,16 @@ README.md
 docs/
 ├── 01-problem-and-solution.md            the problem, the design, the success criteria
 ├── 02-deliverables-and-resume-output.md  what ships, and how it is presented
-└── 03-build-plan.md                      workflow, architecture, folder structure
+├── 03-build-plan.md                      workflow, architecture, folder structure
+├── 04-system-design.md                   components, boundaries, runtime, SLOs
+├── 05-software-design.md                 modules, layering, types, errors, concurrency
+├── 06-technical-design.md                algorithms: chunking, BM25, RRF, reranking
+├── 07-software-requirements.md           testable requirements + acceptance criteria
+├── 08-architecture.md                    drivers, views, quality scenarios, ADRs
+├── 09-project-plan.md                    work packages, milestones, commit policy
+├── 10-engineering-design.md              build, test, CI, logging, release, runbook
+├── 11-rfc-0001-mvp-retrieval-and-refusal.md   proposal with alternatives and rollback
+└── 12-solution-design.md                 problem → journeys → cost → rollout
 ```
 
 Later, when the MVP lands:
@@ -133,14 +142,22 @@ scripts/           corpus generator · one-command local server
 - **Boring dependencies.** SQLite, FastAPI, numpy. Complexity is spent on retrieval design and
   measurement, not on the stack.
 
-## Reading order
+## Documentation
 
-1. [`docs/01-problem-and-solution.md`](docs/01-problem-and-solution.md) — why this exists and what
-   success means, in numbers.
-2. [`docs/02-deliverables-and-resume-output.md`](docs/02-deliverables-and-resume-output.md) — what
-   the finished project consists of, and the evidence each claim must carry.
-3. [`docs/03-build-plan.md`](docs/03-build-plan.md) — how it gets built: workflow, architecture,
-   folder structure, failure matrix, definition of done.
+| # | Document | What it answers |
+|---|---|---|
+| 01 | [Problem & Solution](docs/01-problem-and-solution.md) | why this exists, and what success means in numbers |
+| 02 | [Deliverables & Resume Output](docs/02-deliverables-and-resume-output.md) | what the finished project consists of, and the evidence each claim carries |
+| 03 | [Build Plan](docs/03-build-plan.md) | workflow, architecture, folder structure, definition of done |
+| 04 | [System Design](docs/04-system-design.md) | components, boundaries, runtime view, SLOs, failure modes |
+| 05 | [Software Design](docs/05-software-design.md) | modules, layering rules, types, error model, concurrency |
+| 06 | [Technical Design](docs/06-technical-design.md) | algorithms: chunking, BM25, RRF, reranking, confidence gate |
+| 07 | [Requirements (SRS)](docs/07-software-requirements.md) | testable functional and non-functional requirements |
+| 08 | [Architecture](docs/08-architecture.md) | drivers, views, quality scenarios, ADR register, limits |
+| 09 | [Project Plan](docs/09-project-plan.md) | work packages, milestones, risks, commit policy |
+| 10 | [Engineering Design](docs/10-engineering-design.md) | build, test, CI, logging, metrics, release, runbook |
+| 11 | [RFC-0001](docs/11-rfc-0001-mvp-retrieval-and-refusal.md) | the proposal for hybrid retrieval + refusal, with alternatives |
+| 12 | [Solution Design](docs/12-solution-design.md) | the problem in business terms, journeys, cost, rollout |
 
 ## Status
 
