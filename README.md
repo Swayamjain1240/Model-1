@@ -1,7 +1,7 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
-**Status: design phase.** The MVP is not implemented yet. This repository currently contains the
-design and build documents; the code arrives in the next stage.
+**Status: implementation started.** M1 is complete: the corpus, the hand-labeled question set and
+the validation gates are committed. Retrieval, answering and evaluation are the next stages (M2+).
 
 ---
 
@@ -86,30 +86,24 @@ Now:
 
 ```
 README.md
+Makefile                              corpus / limits / check targets (ATL-EDD-001 §2)
+pyproject.toml                        package + ruff configuration
+corpus/campus/                        18 policy documents (the measured source of truth)
+eval/golden_set.jsonl                 hand-labeled question set (frozen)
+eval/README.md                        schema, frozen rule, targets
 docs/
-├── 01-problem-and-solution.md            the problem, the design, the success criteria
-├── 02-deliverables-and-resume-output.md  what ships, and how it is presented
-├── 03-build-plan.md                      workflow, architecture, folder structure
-├── 04-system-design.md                   components, boundaries, runtime, SLOs
-├── 05-software-design.md                 modules, layering, types, errors, concurrency
-├── 06-technical-design.md                algorithms: chunking, BM25, RRF, reranking
-├── 07-software-requirements.md           testable requirements + acceptance criteria
-├── 08-architecture.md                    drivers, views, quality scenarios, ADRs
-├── 09-project-plan.md                    work packages, milestones, commit policy
-├── 10-engineering-design.md              build, test, CI, logging, release, runbook
-├── 11-rfc-0001-mvp-retrieval-and-refusal.md   proposal with alternatives and rollback
-└── 12-solution-design.md                 problem → journeys → cost → rollout
+├── … 12 design documents (01–12) …
+scripts/check_corpus.py               corpus gate
+scripts/check_limits.py               200-line ceiling gate
+.github/workflows/ci.yml              lint → size ceiling → corpus
 ```
 
 Later, when the MVP lands:
 
 ```
-corpus/            documents (as code)
 src/atlas/         config · text · store · retrieval · generate · pipeline · api · cli
-eval/              golden_set.jsonl · run_eval.py
 results/           committed evidence: eval_report.md, ablation tables
 tests/             unit · contract · integration
-scripts/           corpus generator · one-command local server
 ```
 
 ## Roadmap
@@ -161,5 +155,6 @@ scripts/           corpus generator · one-command local server
 
 ## Status
 
-Design complete, implementation not started. Nothing in this repository is benchmarked, deployed or
+Design phase (M0) and the measuring instrument (M1) are complete; retrieval, answering and
+evaluation are not implemented yet. Nothing in this repository is benchmarked, deployed or
 production-hardened, and it will not be described as if it were.
