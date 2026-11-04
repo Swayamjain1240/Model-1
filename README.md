@@ -1,7 +1,8 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
-**Status: implementation started.** M1 is complete: the corpus, the hand-labeled question set and
-the validation gates are committed. Retrieval, answering and evaluation are the next stages (M2+).
+**Status: implementation started.** M1 and M2 are complete: corpus, hand-labeled question set,
+validation gates, and now the index layer — ingest, chunking, SQLite store and hybrid retrieval
+(BM25 + hashed TF-IDF + RRF). Answering, evaluation and the measured baseline are next (M3+).
 
 ---
 
@@ -86,16 +87,23 @@ Now:
 
 ```
 README.md
-Makefile                              corpus / limits / check targets (ATL-EDD-001 §2)
-pyproject.toml                        package + ruff configuration
+Makefile                              corpus / limits / test targets (ATL-EDD-001 §2)
+pyproject.toml                        package, ruff, pytest configuration
 corpus/campus/                        18 policy documents (the measured source of truth)
 eval/golden_set.jsonl                 hand-labeled question set (frozen)
 eval/README.md                        schema, frozen rule, targets
+src/atlas/
+├── config.py · interfaces.py        every tunable · the stage-2 seams
+├── text/{tokenize,chunk}.py         deterministic tokens · structure-aware chunking
+├── store.py                         SQLite; idempotent, tenant-scoped
+├── retrieval/{sparse,dense,fuse,rerank,hybrid}.py    BM25 · hashed TF-IDF · RRF · blend
+└── cli.py                           ingest · ask · stats
+tests/                                unit, contract and integration (pytest)
 docs/
 ├── … 12 design documents (01–12) …
 scripts/check_corpus.py               corpus gate
 scripts/check_limits.py               200-line ceiling gate
-.github/workflows/ci.yml              lint → size ceiling → corpus
+.github/workflows/ci.yml              lint → size ceiling → tests → corpus
 ```
 
 Later, when the MVP lands:
@@ -155,6 +163,6 @@ tests/             unit · contract · integration
 
 ## Status
 
-Design phase (M0) and the measuring instrument (M1) are complete; retrieval, answering and
-evaluation are not implemented yet. Nothing in this repository is benchmarked, deployed or
-production-hardened, and it will not be described as if it were.
+Design (M0), the measuring instrument (M1) and the index layer (M2) are complete; answering,
+evaluation and the measured baseline are not yet. Nothing in this repository is benchmarked,
+deployed or production-hardened, and it will not be described as if it were.

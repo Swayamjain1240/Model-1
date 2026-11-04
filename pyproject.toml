@@ -3,7 +3,12 @@ name = "atlas"
 version = "0.1.0"
 description = "Atlas — multi-tenant RAG knowledge assistant (MVP, offline-first)"
 requires-python = ">=3.11"
-dependencies = []  # populated in M2 with the first real code (NFR-20: <= 8 runtime deps)
+dependencies = ["numpy>=1.26"]  # 1/8 budget (NFR-20); dense vectors (ATL-TDD-001 s.4, s.11)
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
 
 [tool.ruff]
 line-length = 100
@@ -11,3 +16,4 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+

@@ -15,11 +15,13 @@ jobs:
         with:
           python-version: "3.12"
       - name: install ruff
-        run: pip install ruff
+        run: pip install ruff numpy pytest
       - name: lint (format and rules)
         run: ruff check .
+      - name: unit and integration tests
+        run: python -m pytest
       - name: enforce 200-line ceiling under src/
         run: python scripts/check_limits.py
       - name: validate corpus
         run: python scripts/check_corpus.py
-      # unit / integration and the eval gate land here in M2 and M3, once code exists.
+      # the eval gate lands in M3 together with results/baseline.json.

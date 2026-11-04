@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: corpus limits check ci
+.PHONY: corpus limits test check ci
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -12,8 +12,11 @@ corpus:
 limits:
 	$(PY) scripts/check_limits.py
 
-check: limits corpus
+test:
+	$(PY) -m pytest
+
+check: limits corpus test
 
 ci: check
 
-# unit / integration / eval-gate stages land in M2 and M3 once code exists.
+# the eval-gate stage lands in M3 together with results/baseline.json.
