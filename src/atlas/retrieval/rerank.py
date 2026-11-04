@@ -48,6 +48,14 @@ class Reranker:
             scored.append((idx, combined))
         return sorted(scored, key=lambda item: (-item[1], item[0]))[:k]
 
+    def coverage(self, query: str, text: str) -> float:
+        """Public idf_coverage(query, chunk) for the confidence gate (ATL-TDD-001 s.7)."""
+        tokens = tokenize(query)
+        chunk_tokens = set(tokenize(text))
+        return self._coverage(
+            tokens, bigrams(tokens), chunk_tokens, set(bigrams(list(chunk_tokens)))
+        )
+
     def _coverage(
         self,
         query_tokens: list[str],

@@ -83,7 +83,9 @@ class Store:
         ).fetchone()
         if prior is not None and prior[1] == content_hash:
             return 0
-        doc_id = prior[0] if prior is not None else blake2b_hex(title, length=12)
+        # the document id is the readable file stem: stable, and exactly what the
+        # frozen golden set labels reference; chunk ids below stay BLAKE2b-derived
+        doc_id = prior[0] if prior is not None else path.stem
         self._conn.execute(
             "DELETE FROM chunks WHERE tenant_id = ? AND doc_id = ?", (tenant_id, doc_id)
         )

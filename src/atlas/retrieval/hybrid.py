@@ -7,6 +7,8 @@ optimisation with a measurable target, not an M2 habit.
 
 from __future__ import annotations
 
+import numpy as np
+
 from ..config import SETTINGS, Settings
 from ..interfaces import InputError, Passage
 from ..store import Store, StoredChunk
@@ -51,6 +53,20 @@ class HybridIndex:
             return []
         return view.search(query, k=k, mode=mode)
 
+    def diagnostics(
+        self, query: str, *, tenant_id: str, mode: str = "hybrid"
+    ) -> tuple[Passage, dict] | None:
+        """Top passage plus its cosine / coverage / confidence split (ATL-TDD-001 s.7).
+
+        Used by the eval harness for the refusal decision; returns None when the
+        tenant view is empty, which the harness counts as a refusal at every theta.
+        """
+        passages = self.search(query, tenant_id=tenant_id, k=1, mode=mode)
+        if not passages:
+            return None
+        view = self._view(tenant_id)
+        return passages[0], view.diagnose(query, passages[0])
+
     def _view(self, tenant_id: str) -> _TenantView | None:
         view = self._views.get(tenant_id)
         if view is None:
@@ -69,6 +85,7 @@ class _TenantView:
         self._settings = settings
         texts = [chunk.text for chunk in chunks]
         self._chunks = list(chunks)
+        self._index_of = {chunk.chunk_id: idx for idx, chunk in enumerate(self._chunks)}
         self._sparse = BM25Index(texts, settings=settings)
         self._embedder = HashedTFIDFEmbedder(self._sparse.idf, settings=settings)
         self._matrix = self._embedder.embed(texts)
@@ -92,6 +109,18 @@ class _TenantView:
         ]
         reranked = self._reranker.rerank(query, candidates, k=min(k, s.rerank_candidates))
         return self._passages(reranked)
+
+    def diagnose(self, query: str, passage: Passage) -> dict[str, float]:
+        """Confidence components of one retrieved passage, formulas from ATL-TDD-001 s.7."""
+        position = self._index_of[passage.chunk_id]
+        query_vector = self._embedder.embed([query])[0]
+        cosine = float(np.dot(self._matrix[position], query_vector))
+        coverage = self._reranker.coverage(query, passage.text)
+        confidence = (
+            self._settings.confidence_cosine_weight * max(0.0, cosine)
+            + self._settings.confidence_coverage_weight * coverage
+        )
+        return {"cosine": cosine, "coverage": coverage, "confidence": confidence}
 
     def _dense_search(self, query: str, *, k: int) -> list[tuple[int, float]]:
         """Cosine via the prebuilt unit-norm matrix; zero-score chunks are not candidates."""

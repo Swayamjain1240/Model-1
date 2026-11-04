@@ -85,6 +85,16 @@ def test_ties_break_by_storage_order(tmp_path):
         store.close()
 
 
+def test_diagnostics_expose_confidence_components(mini_index):
+    """The M3 harness needs cosine/coverage/confidence; the seam returns exactly those."""
+    report = mini_index.diagnostics("condonation ten percent", tenant_id="campus")
+    assert report is not None
+    passage, parts = report
+    assert set(parts) == {"cosine", "coverage", "confidence"}
+    assert 0.0 <= parts["confidence"] <= 1.0
+    assert passage.text  # some real passage came back with its components
+
+
 def test_empty_tenant_returns_empty_list(mini_index):
     assert mini_index.search("anything", tenant_id="ghost", k=5) == []
 

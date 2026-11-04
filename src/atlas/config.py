@@ -25,8 +25,9 @@ class Settings:
     dense_dim: int = 1024
     embedder_name: str = "hashed-tfidf-d1024"
 
-    # fusion + rerank (ATL-TDD-001 s.5-s.6)
+    # fusion + rerank (ATL-TDD-001 s.5-s.6); rrf_k is swept by the ablation
     rrf_k: int = 60
+    rrf_k_candidates: tuple[int, ...] = (10, 60, 100)
     rerank_weight_fuse: float = 0.40
     rerank_weight_coverage: float = 0.40
     rerank_weight_bigram: float = 0.15
@@ -38,9 +39,13 @@ class Settings:
     fused_candidates: int = 50
     rerank_candidates: int = 20
 
-    # confidence gate (ATL-TDD-001 s.7) - theta is swept and measured in M3,
-    # never chosen silently; this value is a placeholder until that table exists
+    # confidence gate (ATL-TDD-001 s.7): confidence = 0.65*cosine + 0.35*coverage.
+    # theta_candidates is the sweep the harness reports; `confidence_theta` is the
+    # chosen value and only changes when the committed sweep table in results/ says so.
     confidence_theta: float = 0.30
+    confidence_cosine_weight: float = 0.65
+    confidence_coverage_weight: float = 0.35
+    theta_candidates: tuple[float, ...] = (0.20, 0.25, 0.30, 0.35, 0.40)
 
     # answers (ATL-TDD-001 s.8)
     max_answer_sentences: int = 4
