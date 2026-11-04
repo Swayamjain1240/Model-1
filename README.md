@@ -1,8 +1,9 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
-**Status: implementation started.** M1 and M2 are complete: corpus, hand-labeled question set,
-validation gates, and now the index layer — ingest, chunking, SQLite store and hybrid retrieval
-(BM25 + hashed TF-IDF + RRF). Answering, evaluation and the measured baseline are next (M3+).
+**Status: implementation started.** M1–M3 are complete: corpus, hand-labeled question set, the
+index layer (ingest, chunking, store, hybrid retrieval), and the first **measured baseline** on the
+frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75, with ablations in `results/`).
+Answering with citations and refusal is next (M4+).
 
 ---
 
@@ -78,8 +79,12 @@ appears anywhere else.
 | Safety | prompt-injection block rate, cross-tenant leaks | adversarial suites in CI |
 | Cost | tokens per query | instrumented counters |
 
-**No results exist yet.** When they do, they will be reported here with the machine and corpus that
-produced them — never invented.
+**First results exist** and live in `results/eval_report.md` with provenance (machine, commit,
+corpus) and regeneration command. The headline, so anyone can check it in 10 seconds:
+recall@10 on the 24 answerable queries is **0.96 (sparse) / 0.88 (hybrid) / 0.75 (dense)**; hybrid
+is currently *worse than sparse alone* (FR-11 not yet met, recorded in the report), and the theta
+range needs M4's product-side calibration. Later changes re-run the same frozen set and report
+themselves as deltas against `results/baseline.json`.
 
 ## Repository layout
 

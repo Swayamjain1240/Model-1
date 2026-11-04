@@ -34,6 +34,27 @@ is the sanctioned way to widen the set (Solution Design §10, P1 pilot).
 | Metric | Target |
 |---|---|
 | recall@10 | >= 0.90 |
-| precision@5 | >= 0.80 |
+| precision@5 (capped) | >= 0.80 |
 | nDCG@10 | reported |
 | refusal accuracy (u-set) | >= 0.95 |
+
+## M3 clarification, recorded (not a silent edit)
+
+The first measured baseline exposed an ambiguity in the frozen table above:
+`precision@5` was written without specifying the denominator. With document-level
+binary labels (1 relevant document per query), the slot-denominator variant has a
+deliberate ceiling of |relevant| / 5 = **0.20**, which no retriever can beat — so a
+>= 0.80 target could only ever be met by passing through luck. Clarification:
+
+- `precision@5 (slots)` — the frozen variant, hits / 5, ceiling 0.20. Kept as
+  measured in the report for continuity.
+- `precision@5 (capped)` — hits / min(5, |relevant|). This is the variant the
+  >= 0.80 target refers to; it is computed per query and averaged.
+
+Both definitions and both columns are printed from M3 onward. Labels, doc-id
+lists and the unanswerable split remain untouched (they were never ambiguous).
+
+The M3 report also shows the theta sweep saturating (answer rate 0.00 at every
+candidate threshold): the hashed TF-IDF stand-in's raw confidence sits far below
+the canonical 0.20–0.40 range. Product-side calibrated theta is M4 work, placed
+where the gate actually runs inside the answering path.
