@@ -1,0 +1,148 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "8f8526c",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "modes": {
+    "sparse": {
+      "aggregate": {
+        "recall_at_10": 0.9583,
+        "precision_at_5": 0.2,
+        "precision_capped_at_5": 0.875,
+        "ndcg_at_10": 0.8216,
+        "mrr": 0.7876
+      },
+      "sweep": [
+        {
+          "theta": 0.2,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.25,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.3,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.35,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.4,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        }
+      ],
+      "chosen": {
+        "theta": 0.2,
+        "answer_rate": 0.0,
+        "refusal_accuracy": 1.0
+      }
+    },
+    "dense": {
+      "aggregate": {
+        "recall_at_10": 0.75,
+        "precision_at_5": 0.125,
+        "precision_capped_at_5": 0.5208,
+        "ndcg_at_10": 0.4709,
+        "mrr": 0.4016
+      },
+      "sweep": [
+        {
+          "theta": 0.2,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.25,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.3,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.35,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.4,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        }
+      ],
+      "chosen": {
+        "theta": 0.2,
+        "answer_rate": 0.0,
+        "refusal_accuracy": 1.0
+      }
+    },
+    "hybrid": {
+      "aggregate": {
+        "recall_at_10": 0.875,
+        "precision_at_5": 0.1833,
+        "precision_capped_at_5": 0.7917,
+        "ndcg_at_10": 0.7063,
+        "mrr": 0.6524
+      },
+      "sweep": [
+        {
+          "theta": 0.2,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.25,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.3,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.35,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        },
+        {
+          "theta": 0.4,
+          "answer_rate": 0.0,
+          "refusal_accuracy": 1.0
+        }
+      ],
+      "chosen": {
+        "theta": 0.2,
+        "answer_rate": 0.0,
+        "refusal_accuracy": 1.0
+      }
+    }
+  },
+  "rrf_ablation": [
+    {
+      "k": 10,
+      "recall_at_10": 0.8333
+    },
+    {
+      "k": 60,
+      "recall_at_10": 0.875
+    },
+    {
+      "k": 100,
+      "recall_at_10": 0.875
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "recall_at_10": 0.875,
+  "precision_at_5": 0.1833,
+  "precision_capped_at_5": 0.7917,
+  "ndcg_at_10": 0.7063,
+  "mrr": 0.6524,
+  "refusal_accuracy": 1.0,
+  "note": "useless-threshold guard: see eval_report.md theta section"
+}
