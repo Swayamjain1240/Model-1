@@ -4,7 +4,7 @@
 
 PY ?= python3
 
-.PHONY: corpus limits test check ci
+.PHONY: corpus limits test eval check ci
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -15,8 +15,12 @@ limits:
 test:
 	$(PY) -m pytest
 
+eval:
+	$(PY) -m eval.run_eval
+
 check: limits corpus test
 
 ci: check
 
-# the eval-gate stage lands in M3 together with results/baseline.json.
+# the eval gate runs in CI against results/baseline.json (ATL-EDD-001 s.7);
+# product-side theta calibration lands in M4 with the answer path.

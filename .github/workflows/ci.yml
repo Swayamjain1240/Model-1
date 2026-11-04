@@ -24,4 +24,6 @@ jobs:
         run: python scripts/check_limits.py
       - name: validate corpus
         run: python scripts/check_corpus.py
-      # the eval gate lands in M3 together with results/baseline.json.
+      - name: eval gate (metrics vs committed baseline)
+        run: python -m eval.run_eval --gate
+      # full unit / integration splits and additional adversarial gates land in M4+
