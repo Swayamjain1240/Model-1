@@ -117,6 +117,7 @@ results/                              committed evidence: eval_report, calibrati
                                       fr11_diagnosis, latency, loadtest, robustness
 docs/
 ├── … 12 design documents (01–12) …
+├── 13-handover-runbook.md           how to run, prove, and extend (M6)
 scripts/check_corpus.py               corpus gate
 scripts/check_limits.py               200-line ceiling gate
 .github/workflows/ci.yml              lint → size ceiling → tests → corpus → eval gate
@@ -195,8 +196,11 @@ wrong-token requests get `401 AUTH_REQUIRED`; empty/stopword-only queries get
 ## Status
 
 Design (M0), the measuring instrument (M1), the index layer (M2), the measured baseline (M3),
-the calibrated answer path (M4) and the HTTP API with its load test (M5) are complete and all
-results live in `results/`. Not yet: deployment validation and the handover runbook (M6), and
-stage-2 quality work (real embeddings, trained reranker, generative answers). The API is
-local-only single-process — it is not deployed and not production-hardened, and is not
-described as if it were.
+the calibrated answer path (M4), the HTTP API with its load test (M5) and the handover proof
+(M6) are complete; every number lives in `results/`. The FR-28 proof is re-runnable by anyone:
+`python scripts/repro_clone.py` materialises a clean HEAD clone in a fresh venv, re-ingests,
+re-evaluates and demos the live API, then compares against the committed baseline —
+latest receipt: recall@10 0.8750 = 0.8750, refusal accuracy 1.0000 = 1.0000, **PASS**
+(`results/handover.md`). The runbook (`docs/13-handover-runbook.md`) states the limitations
+openly: single node, single process, not deployed, answer rate limited by the calibrated gate
+until stage-2 embeddings.
