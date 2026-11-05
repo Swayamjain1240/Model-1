@@ -1,9 +1,10 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
-**Status: implementation started.** M1–M3 are complete: corpus, hand-labeled question set, the
-index layer (ingest, chunking, store, hybrid retrieval), and the first **measured baseline** on the
-frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75, with ablations in `results/`).
-Answering with citations and refusal is next (M4+).
+**Status: implementation started.** M1–M4 are complete: corpus, hand-labeled question set, the
+index layer (ingest, chunking, store, hybrid retrieval), the first **measured baseline** on the
+frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75, with ablations in `results/`), and
+the **answer path**: extractive cited answers with the calibrated refusal gate (theta 0.13,
+safety-first, `results/calibration.md`). The HTTP surface and handover are next (M5+).
 
 ---
 
@@ -82,8 +83,11 @@ appears anywhere else.
 **First results exist** and live in `results/eval_report.md` with provenance (machine, commit,
 corpus) and regeneration command. The headline, so anyone can check it in 10 seconds:
 recall@10 on the 24 answerable queries is **0.96 (sparse) / 0.88 (hybrid) / 0.75 (dense)**; hybrid
-is currently *worse than sparse alone* (FR-11 not yet met, recorded in the report), and the theta
-range needs M4's product-side calibration. Later changes re-run the same frozen set and report
+is currently *worse than sparse alone* (FR-11 not yet met, recorded with query-level evidence in
+`results/fr11_diagnosis.md`). The M4 calibration report (`results/calibration.md`) shows the
+stand-in scores overlap between answerable and unanswerable queries, so the gate is set
+safety-first (theta 0.13, zero false accepts, refusal accuracy 1.00) — the answer rate recovers
+when stage-2 embeddings separate the scores. Later changes re-run the same frozen set and report
 themselves as deltas against `results/baseline.json`.
 
 ## Repository layout
