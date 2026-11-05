@@ -1,0 +1,484 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "54ffd79",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "rows": [
+    {
+      "id": "a001",
+      "note": "multi_fact: 75% bar + medical condonation",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 0.0,
+      "sparse_mrr": 0.3333,
+      "hybrid_mrr": 0.0,
+      "lost": true,
+      "sparse_top3": [
+        "medical-and-counseling",
+        "scholarship-merit",
+        "attendance-policy"
+      ],
+      "hybrid_top3": [
+        "medical-and-counseling",
+        "examination-rules",
+        "scholarship-need-based"
+      ]
+    },
+    {
+      "id": "a002",
+      "note": "kw_mismatch: percentage in words; detention",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 0.2,
+      "lost": true,
+      "sparse_top3": [
+        "attendance-policy",
+        "scholarship-merit",
+        "course-withdrawal"
+      ],
+      "hybrid_top3": [
+        "medical-and-counseling",
+        "grading-system",
+        "course-withdrawal"
+      ]
+    },
+    {
+      "id": "a003",
+      "note": "multi_doc: 8.5 CGPA + 85% attendance stated in both",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "scholarship-merit",
+        "scholarship-need-based",
+        "attendance-policy"
+      ],
+      "hybrid_top3": [
+        "scholarship-merit",
+        "attendance-policy",
+        "branch-transfer"
+      ]
+    },
+    {
+      "id": "a004",
+      "note": "kw_mismatch: concession vs waiver",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "scholarship-need-based",
+        "admission-policy",
+        "fee-payment-and-refund"
+      ],
+      "hybrid_top3": [
+        "scholarship-need-based",
+        "scholarship-merit",
+        "admission-policy"
+      ]
+    },
+    {
+      "id": "a005",
+      "note": "multi_doc: 75% waiver + hostel/mess excluded",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "fee-payment-and-refund",
+        "medical-and-counseling",
+        "scholarship-need-based"
+      ],
+      "hybrid_top3": [
+        "fee-payment-and-refund",
+        "scholarship-need-based",
+        "medical-and-counseling"
+      ]
+    },
+    {
+      "id": "a006",
+      "note": "3 regular + 2 supplementary = 5",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "backlog-and-attempts",
+        "supplementary-exams",
+        "branch-transfer"
+      ],
+      "hybrid_top3": [
+        "backlog-and-attempts",
+        "examination-rules",
+        "course-withdrawal"
+      ]
+    },
+    {
+      "id": "a007",
+      "note": "kw_mismatch: carry forward wording",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "backlog-and-attempts",
+        "examination-rules",
+        "supplementary-exams"
+      ],
+      "hybrid_top3": [
+        "backlog-and-attempts",
+        "examination-rules",
+        "library-rules"
+      ]
+    },
+    {
+      "id": "a008",
+      "note": "special chance Rs 2,500",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "backlog-and-attempts",
+        "supplementary-exams",
+        "grading-system"
+      ],
+      "hybrid_top3": [
+        "backlog-and-attempts",
+        "supplementary-exams",
+        "grading-system"
+      ]
+    },
+    {
+      "id": "a009",
+      "note": "paraphrase: re-exams vs supplementary; June/Dec + 2 weeks",
+      "sparse_recall": 0.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 0.0,
+      "hybrid_mrr": 0.125,
+      "lost": false,
+      "sparse_top3": [
+        "placement-policy",
+        "minor-and-honors",
+        "library-rules"
+      ],
+      "hybrid_top3": [
+        "library-rules",
+        "backlog-and-attempts",
+        "branch-transfer"
+      ]
+    },
+    {
+      "id": "a010",
+      "note": "multi_fact: Rs 1,000 + max 2",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 0.5,
+      "lost": true,
+      "sparse_top3": [
+        "supplementary-exams",
+        "examination-rules",
+        "backlog-and-attempts"
+      ],
+      "hybrid_top3": [
+        "examination-rules",
+        "supplementary-exams",
+        "backlog-and-attempts"
+      ]
+    },
+    {
+      "id": "a011",
+      "note": "kw_mismatch: drop vs withdrawal, record vs W grade",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 0.125,
+      "hybrid_mrr": 0.1667,
+      "lost": false,
+      "sparse_top3": [
+        "attendance-policy",
+        "backlog-and-attempts",
+        "scholarship-need-based"
+      ],
+      "hybrid_top3": [
+        "backlog-and-attempts",
+        "attendance-policy",
+        "examination-rules"
+      ]
+    },
+    {
+      "id": "a012",
+      "note": "7.5 CGPA, end of first year",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 0.3333,
+      "lost": true,
+      "sparse_top3": [
+        "branch-transfer",
+        "scholarship-need-based",
+        "code-of-conduct-discipline"
+      ],
+      "hybrid_top3": [
+        "backlog-and-attempts",
+        "code-of-conduct-discipline",
+        "branch-transfer"
+      ]
+    },
+    {
+      "id": "a013",
+      "note": "10:30 PM curfew",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "hostel-rules",
+        "fee-payment-and-refund",
+        "examination-rules"
+      ],
+      "hybrid_top3": [
+        "hostel-rules",
+        "fee-payment-and-refund",
+        "examination-rules"
+      ]
+    },
+    {
+      "id": "a014",
+      "note": "multi_doc: Rs 90,000 incl mess",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "hostel-rules",
+        "fee-payment-and-refund",
+        "medical-and-counseling"
+      ],
+      "hybrid_top3": [
+        "hostel-rules",
+        "fee-payment-and-refund",
+        "scholarship-need-based"
+      ]
+    },
+    {
+      "id": "a015",
+      "note": "paraphrase: issue vs borrow; 4 books, 14 days",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "library-rules",
+        "scholarship-need-based",
+        "examination-rules"
+      ],
+      "hybrid_top3": [
+        "library-rules",
+        "scholarship-need-based",
+        "examination-rules"
+      ]
+    },
+    {
+      "id": "a016",
+      "note": "6.0 + no detention/disciplinary",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "placement-policy",
+        "medical-and-counseling",
+        "fee-payment-and-refund"
+      ],
+      "hybrid_top3": [
+        "placement-policy",
+        "fee-payment-and-refund",
+        "attendance-policy"
+      ]
+    },
+    {
+      "id": "a017",
+      "note": "kw_mismatch: dream offer rule 1.5x",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 0.5,
+      "lost": true,
+      "sparse_top3": [
+        "placement-policy",
+        "attendance-policy",
+        "examination-rules"
+      ],
+      "hybrid_top3": [
+        "attendance-policy",
+        "placement-policy",
+        "hostel-rules"
+      ]
+    },
+    {
+      "id": "a018",
+      "note": "after 4th semester, 6 weeks",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "internship-guidelines",
+        "medical-and-counseling",
+        "attendance-policy"
+      ],
+      "hybrid_top3": [
+        "internship-guidelines",
+        "code-of-conduct-discipline",
+        "grading-system"
+      ]
+    },
+    {
+      "id": "a019",
+      "note": "kw_mismatch: marks-credits; 18 credits",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 0.5,
+      "lost": true,
+      "sparse_top3": [
+        "minor-and-honors",
+        "grading-system",
+        "branch-transfer"
+      ],
+      "hybrid_top3": [
+        "grading-system",
+        "minor-and-honors",
+        "supplementary-exams"
+      ]
+    },
+    {
+      "id": "a020",
+      "note": "AA=10, DD=4 pass",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 0.5,
+      "hybrid_mrr": 0.3333,
+      "lost": true,
+      "sparse_top3": [
+        "backlog-and-attempts",
+        "grading-system",
+        "supplementary-exams"
+      ],
+      "hybrid_top3": [
+        "backlog-and-attempts",
+        "supplementary-exams",
+        "grading-system"
+      ]
+    },
+    {
+      "id": "a021",
+      "note": "paraphrase: re-verify vs revaluation; Rs 800, 10 days",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 0.0,
+      "sparse_mrr": 0.1111,
+      "hybrid_mrr": 0.0,
+      "lost": true,
+      "sparse_top3": [
+        "admission-policy",
+        "branch-transfer",
+        "supplementary-exams"
+      ],
+      "hybrid_top3": [
+        "branch-transfer",
+        "placement-policy",
+        "library-rules"
+      ]
+    },
+    {
+      "id": "a022",
+      "note": "3 rounds",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 1.0,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "admission-policy",
+        "medical-and-counseling",
+        "hostel-rules"
+      ],
+      "hybrid_top3": [
+        "admission-policy",
+        "hostel-rules",
+        "fee-payment-and-refund"
+      ]
+    },
+    {
+      "id": "a023",
+      "note": "paraphrase: complaint vs grievance; 10 working days",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 1.0,
+      "sparse_mrr": 0.5,
+      "hybrid_mrr": 1.0,
+      "lost": false,
+      "sparse_top3": [
+        "admission-policy",
+        "code-of-conduct-discipline",
+        "medical-and-counseling"
+      ],
+      "hybrid_top3": [
+        "code-of-conduct-discipline",
+        "scholarship-need-based",
+        "attendance-policy"
+      ]
+    },
+    {
+      "id": "a024",
+      "note": "kw_mismatch: counsellor vs counselling centre; Tue/Fri 2-5 PM",
+      "sparse_recall": 1.0,
+      "hybrid_recall": 0.0,
+      "sparse_mrr": 0.3333,
+      "hybrid_mrr": 0.0,
+      "lost": true,
+      "sparse_top3": [
+        "library-rules",
+        "attendance-policy",
+        "medical-and-counseling"
+      ],
+      "hybrid_top3": [
+        "attendance-policy",
+        "admission-policy",
+        "examination-rules"
+      ]
+    }
+  ],
+  "losing_queries": [
+    "a001",
+    "a002",
+    "a010",
+    "a012",
+    "a017",
+    "a019",
+    "a020",
+    "a021",
+    "a024"
+  ],
+  "summary": {
+    "answerable": 24,
+    "hybrid_loses": 9,
+    "hybrid_wins": 3,
+    "tied": 12
+  }
+}
