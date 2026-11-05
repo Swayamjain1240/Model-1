@@ -12,7 +12,7 @@ import numpy as np
 from ..config import SETTINGS, Settings
 from ..interfaces import InputError, Passage
 from ..store import Store, StoredChunk
-from ..text.tokenize import tokenize
+from ..text.tokenize import bigrams, tokenize
 from .dense import HashedTFIDFEmbedder
 from .fuse import rrf
 from .rerank import Reranker
@@ -90,6 +90,13 @@ class _TenantView:
         self._embedder = HashedTFIDFEmbedder(self._sparse.idf, settings=settings)
         self._matrix = self._embedder.embed(texts)
         self._reranker = Reranker(self._sparse.idf, settings=settings)
+        # M5 perf: chunk features are immutable per view, so cache them once and the
+        # reranker stops re-tokenising candidate text on every search (load-test finding)
+        features: dict[int, tuple[set, set]] = {}
+        for idx, chunk in enumerate(self._chunks):
+            tokens = set(tokenize(chunk.text))
+            features[idx] = (tokens, set(bigrams(list(tokens))))
+        self._reranker.attach_features(features)
 
     def search(self, query: str, *, k: int, mode: str) -> list[Passage]:
         s = self._settings

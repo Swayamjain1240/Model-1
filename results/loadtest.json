@@ -1,0 +1,19 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "2f792d0",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "users": 10,
+  "per_user": 30,
+  "summary": {
+    "ok_requests": 300,
+    "failures": 0,
+    "p50_ms": 16.05,
+    "p95_ms": 37.215,
+    "p99_ms": 101.554,
+    "rps": 216.7
+  }
+}

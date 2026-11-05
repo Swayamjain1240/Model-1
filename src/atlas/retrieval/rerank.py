@@ -18,14 +18,28 @@ class Reranker:
     def __init__(self, idf: dict[str, float], *, settings: Settings = SETTINGS) -> None:
         self._idf = idf
         self._settings = settings
+        # Precomputed per-chunk (token set, bigram set) by the owning view; chunk
+        # features never change between searches, so recomputing them per request
+        # was one of the M5 findings (load test showed it dominating p95).
+        self._chunk_features: dict[int, tuple[set[str], set[str]]] | None = None
+
+    def attach_features(self, features: dict[int, tuple[set[str], set[str]]]) -> None:
+        """Cache per-chunk token/bigram sets keyed by candidate index (M5 perf)."""
+        self._chunk_features = features
 
     def rerank(
-        self, query: str, candidates: list[tuple[int, float, str, str]], *, k: int
+        self,
+        query: str,
+        candidates: list[tuple[int, float, str, str]],
+        *,
+        k: int,
     ) -> list[tuple[int, float]]:
         """Candidates are (idx, fuse_score, chunk_text, title); out is top-k (idx, score).
 
         Ties are broken by ascending idx, keeping equal-scored candidates in
         chunk order - the same determinism contract the retrievers give us.
+        When the owning view attached precomputed features, per-candidate
+        tokenisation is skipped (identical results, just cheaper).
         """
         query_tokens = tokenize(query)
         query_bigrams = bigrams(query_tokens)
@@ -34,8 +48,11 @@ class Reranker:
         scored: list[tuple[int, float]] = []
         for idx, fuse_score, text, title in candidates:
             fuse_norm = (fuse_score / max_fuse) if max_fuse > 0.0 else 0.0
-            chunk_set = set(tokenize(text))
-            chunk_bigrams = set(bigrams(list(chunk_set)))
+            if self._chunk_features is not None and idx in self._chunk_features:
+                chunk_set, chunk_bigrams = self._chunk_features[idx]
+            else:
+                chunk_set = set(tokenize(text))
+                chunk_bigrams = set(bigrams(list(chunk_set)))
             coverage = self._coverage(query_tokens, query_bigrams, chunk_set, chunk_bigrams)
             bigram_overlap = _ratio(query_bigrams, chunk_bigrams)
             title_match = _ratio(title_set, set(tokenize(title)))

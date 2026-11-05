@@ -1,0 +1,37 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "2f792d0",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "passes": 5,
+  "warmup_passes": 1,
+  "summary": {
+    "sparse": {
+      "n": 120,
+      "mean_ms": 0.077,
+      "p50_ms": 0.065,
+      "p95_ms": 0.159
+    },
+    "dense": {
+      "n": 120,
+      "mean_ms": 0.142,
+      "p50_ms": 0.111,
+      "p95_ms": 0.279
+    },
+    "hybrid": {
+      "n": 120,
+      "mean_ms": 0.6,
+      "p50_ms": 0.548,
+      "p95_ms": 0.962
+    },
+    "answer_e2e": {
+      "n": 120,
+      "mean_ms": 1.041,
+      "p50_ms": 0.881,
+      "p95_ms": 1.922
+    }
+  }
+}
