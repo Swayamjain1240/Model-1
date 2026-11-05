@@ -1,4 +1,4 @@
-"""The answer path (FR-13..FR-18): gate on confidence, extract, cite, or refuse.
+"""The answer path (FR-13..FR-19): gate on confidence, extract, cite, or refuse.
 
 The MVP generator is deliberately extractive: every sentence in the answer is
 taken verbatim from the top passage, so "answer contains only sourced text"
@@ -6,20 +6,18 @@ taken verbatim from the top passage, so "answer contains only sourced text"
 citation IS the passage the text came from (FR-14, FR-15). Refusal is a
 deliberate `Answer` with `refused=True` and no citations (FR-16), never an
 exception: an empty tenant is "no documents", which the gate refuses safely.
+FR-19: an empty or stopword-only query is an InputError (HTTP 400 upstream).
 """
 
 from __future__ import annotations
 
-import re
 import time
 import uuid
 
 from .config import SETTINGS, Settings
-from .interfaces import Answer, Citation
+from .interfaces import Answer, Citation, InputError, Passage
 from .retrieval import HybridIndex
-from .text.tokenize import tokenize
-
-_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
+from .text.tokenize import sentences, tokenize
 
 
 def answer_query(
@@ -33,27 +31,29 @@ def answer_query(
     """One question in, one cited extractive answer or a refusal out (FR-13..FR-17)."""
     trace_id = uuid.uuid4().hex[:16]
     total_start = time.perf_counter()
-    retrieve_start = total_start
+    if not tokenize(query):
+        raise InputError("empty or stopword-only query")  # FR-19, maps to 400
+
+    retrieve_start = time.perf_counter()
     report = index.diagnostics(query, tenant_id=tenant_id, mode=mode)
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000.0
+    gate_start = time.perf_counter()
 
-    if report is None:
-        return Answer(  # no documents at all: refuse, never raise (FR-16)
-            query=query,
-            text="",
-            citations=(),
-            confidence=0.0,
-            refused=True,
-            mode=mode,
-            degraded=False,
-            timings_ms={"retrieve_ms": _ms(retrieve_ms), "total_ms": _ms(retrieve_ms)},
-            trace_id=trace_id,
-        )
-
-    passage, parts = report
-    confidence = round(parts["confidence"], 4)
-    if confidence < settings.confidence_theta:
-        return Answer(
+    if report is not None:
+        passage, parts = report
+        confidence = round(parts["confidence"], 4)
+        gate_passes = confidence >= settings.confidence_theta
+    else:
+        passage, confidence, gate_passes = None, 0.0, False
+    gate_ms = (time.perf_counter() - gate_start) * 1000.0
+    timings = {
+        "retrieve_ms": _ms(retrieve_ms),
+        "gate_ms": _ms(gate_ms),
+        "extract_ms": 0.0,
+        "total_ms": _ms((time.perf_counter() - total_start) * 1000.0),
+    }
+    if not gate_passes:
+        return Answer(  # refusal is deliberate, never an exception (FR-16, FR-17)
             query=query,
             text="",
             citations=(),
@@ -61,13 +61,14 @@ def answer_query(
             refused=True,
             mode=mode,
             degraded=False,
-            timings_ms={"retrieve_ms": _ms(retrieve_ms), "total_ms": _ms(retrieve_ms)},
+            timings_ms=timings,
             trace_id=trace_id,
         )
 
     extract_start = time.perf_counter()
     text = _extract(query, passage, max_sentences=settings.max_answer_sentences)
-    extract_ms = (time.perf_counter() - extract_start) * 1000.0
+    timings["extract_ms"] = _ms((time.perf_counter() - extract_start) * 1000.0)
+    timings["total_ms"] = _ms((time.perf_counter() - total_start) * 1000.0)
     citations = (
         Citation(
             chunk_id=passage.chunk_id,
@@ -85,16 +86,12 @@ def answer_query(
         refused=False,
         mode=mode,
         degraded=False,
-        timings_ms={
-            "retrieve_ms": _ms(retrieve_ms),
-            "extract_ms": _ms(extract_ms),
-            "total_ms": _ms((time.perf_counter() - total_start) * 1000.0),
-        },
+        timings_ms=timings,
         trace_id=trace_id,
     )
 
 
-def _extract(query: str, passage, *, max_sentences: int) -> str:
+def _extract(query: str, passage: Passage, *, max_sentences: int) -> str:
     """The best sentence run from ONE passage, verbatim, bounded (FR-13, FR-18).
 
     Sentences are scored by how many unseen query tokens they cover; ties are
@@ -102,15 +99,15 @@ def _extract(query: str, passage, *, max_sentences: int) -> str:
     output is deterministic and reads naturally.
     """
     wanted = set(tokenize(query))
-    sentences = [s.strip() for s in _SENTENCE_SPLIT.split(passage.text) if s.strip()]
-    if not sentences:
+    split = sentences(passage.text)
+    if not split:
         return ""
-    sentence_tokens = [set(tokenize(sentence)) for sentence in sentences]
+    split_tokens = [set(tokenize(sentence)) for sentence in split]
     covered: set[str] = set()
     chosen: list[int] = []
     while len(chosen) < max_sentences:
         best_idx, best_gain = -1, 0
-        for idx, tokens in enumerate(sentence_tokens):
+        for idx, tokens in enumerate(split_tokens):
             if idx in chosen:
                 continue
             gain = len((wanted - covered) & tokens)
@@ -119,10 +116,10 @@ def _extract(query: str, passage, *, max_sentences: int) -> str:
         if best_idx < 0:
             break
         chosen.append(best_idx)
-        covered |= sentence_tokens[best_idx]
+        covered |= split_tokens[best_idx]
     if not chosen:
-        chosen = [0]  # query words absent from every sentence: the fallback opinion
-    return " ".join(sentences[idx] for idx in sorted(chosen))
+        chosen = [0]  # query words absent from every sentence: the first-sentence fallback
+    return " ".join(split[idx] for idx in sorted(chosen))
 
 
 def _ms(seconds: float) -> float:

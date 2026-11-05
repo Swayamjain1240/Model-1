@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas — knowledge assistant that refuses to guess</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; color: #1a1a2e; }
+  h1 { font-size: 1.4rem; } h1 span { color: #b91c1c; }
+  form { display: flex; gap: 8px; margin: 16px 0; }
+  input[type=text] { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+  button { padding: 10px 18px; border: 0; border-radius: 8px; background: #1a1a2e; color: #fff; cursor: pointer; }
+  .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
+  .refused { border-color: #fca5a5; background: #fef2f2; }
+  .cite { color: #475569; font-size: .85rem; margin-top: 8px; }
+  .meta { color: #64748b; font-size: .75rem; margin-top: 6px; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>Atlas — <span>refuses to guess</span></h1>
+<p>Ask a campus-policy question. Either you get a verbatim answer with its citation, or an
+explicit refusal — <code>no grounded answer</code>.</p>
+<form onsubmit="ask(event)">
+  <input id="q" type="text" placeholder="e.g. What is the minimum attendance to stay enrolled?">
+  <button>Ask</button>
+</form>
+<div id="out"></div>
+<script>
+async function ask(event) {
+  event.preventDefault();
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+  const out = document.getElementById('out');
+  out.innerHTML = '<div class="card">thinking…</div>';
+  try {
+    const res = await fetch('/v1/ask?q=' + encodeURIComponent(q), {
+      headers: { 'X-Tenant': localStorage.getItem('atlas-tenant') || 'campus' }
+    });
+    const data = await res.json();
+    if (data.error) {
+      out.innerHTML = `<div class="card refused"><b>${data.error.code}</b> — ${data.error.message}</div>`;
+      return;
+    }
+    const timings = Object.entries(data.timings).map(([k, v]) => `${k}=${v}`).join(' · ');
+    out.innerHTML = data.refused
+      ? `<div class="card refused"><b>REFUSED</b> — no grounded answer; citations withheld
+         (confidence ${data.confidence} < gate)</div><div class="meta">${timings}</div>`
+      : `<div class="card"><p>${data.text}</p>
+         ${data.citations.map(c =>
+           `<div class="cite">📄 <b>${c.title}</b> — ${c.section} · <code>${c.doc_id}</code></div>`
+         ).join('')}
+         <div class="meta">confidence ${data.confidence} · ${timings}</div></div>`;
+  } catch (err) {
+    out.innerHTML = `<div class="card refused">request failed: ${err}</div>`;
+  }
+}
+</script>
+</body>
+</html>

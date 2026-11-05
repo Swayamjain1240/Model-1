@@ -13,6 +13,7 @@ from pathlib import Path
 from .answer import answer_query
 from .config import SETTINGS
 from .retrieval import HybridIndex
+from .server import serve
 from .store import Store
 
 
@@ -23,6 +24,8 @@ def main(argv: list[str] | None = None) -> int:
         return _ingest(args)
     if args.command == "ask":
         return _ask(args)
+    if args.command == "serve":
+        return serve(db=args.db, host=args.host, port=args.port)
     return _stats(args)
 
 
@@ -41,6 +44,9 @@ def _parser() -> argparse.ArgumentParser:
     ask.add_argument("--raw", action="store_true", help="list retrieved passages instead")
     stats = sub.add_parser("stats", help="document and chunk counts")
     stats.add_argument("--tenant", default=SETTINGS.default_tenant)
+    serve_cmd = sub.add_parser("serve", help="run the /v1/ask JSON API (stdio/jobs, no containers)")
+    serve_cmd.add_argument("--host", default=None)
+    serve_cmd.add_argument("--port", type=int, default=None)
     return parser
 
 

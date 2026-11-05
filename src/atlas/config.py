@@ -6,6 +6,7 @@ sweeps in M3 can only move numbers they can see.
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 
@@ -56,6 +57,11 @@ class Settings:
     # persistence
     default_db_path: str = "data/atlas.db"
     default_tenant: str = "campus"
+
+    # API (M5): the token comes from the environment, never from the repo
+    api_token: str = os.environ.get("ATLAS_API_TOKEN", "")
+    serve_host: str = "127.0.0.1"
+    serve_port: int = 8070
 
 
 SETTINGS = Settings()
