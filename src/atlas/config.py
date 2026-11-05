@@ -40,9 +40,10 @@ class Settings:
     rerank_candidates: int = 20
 
     # confidence gate (ATL-TDD-001 s.7): confidence = 0.65*cosine + 0.35*coverage.
-    # theta_candidates is the sweep the harness reports; `confidence_theta` is the
-    # chosen value and only changes when the committed sweep table in results/ says so.
-    confidence_theta: float = 0.30
+    # 0.13 is the lowest false-accept-free theta (results/calibration.md, M4, in-sample,
+    # safety-first: wrong citations refuse-shipped; answer rate recovers at stage 2).
+    # theta_candidates is the harness sweep; theta changes only on committed evidence.
+    confidence_theta: float = 0.13
     confidence_cosine_weight: float = 0.65
     confidence_coverage_weight: float = 0.35
     theta_candidates: tuple[float, ...] = (0.20, 0.25, 0.30, 0.35, 0.40)
