@@ -10,6 +10,7 @@ import argparse
 import sys
 from pathlib import Path
 
+from .answer import answer_query
 from .config import SETTINGS
 from .retrieval import HybridIndex
 from .store import Store
@@ -32,11 +33,12 @@ def _parser() -> argparse.ArgumentParser:
     ingest = sub.add_parser("ingest", help="ingest markdown files")
     ingest.add_argument("path", type=Path, help="a markdown file or a directory of them")
     ingest.add_argument("--tenant", default=SETTINGS.default_tenant)
-    ask = sub.add_parser("ask", help="run one retrieval query and show the passages")
+    ask = sub.add_parser("ask", help="one cited answer, or a refusal at the gate")
     ask.add_argument("query")
     ask.add_argument("--tenant", default=SETTINGS.default_tenant)
     ask.add_argument("-k", type=int, default=5)
     ask.add_argument("--mode", default="hybrid", choices=("sparse", "dense", "hybrid"))
+    ask.add_argument("--raw", action="store_true", help="list retrieved passages instead")
     stats = sub.add_parser("stats", help="document and chunk counts")
     stats.add_argument("--tenant", default=SETTINGS.default_tenant)
     return parser
@@ -66,21 +68,40 @@ def _markdown_files(path: Path) -> list[Path]:
 
 def _ask(args: argparse.Namespace) -> int:
     store = Store(args.db)
-    index = HybridIndex(store)
     try:
-        passages = index.search(args.query, tenant_id=args.tenant, k=args.k, mode=args.mode)
+        if args.raw:
+            _ask_raw(args, store)
+            return 0
+        answer = answer_query(
+            HybridIndex(store), args.query, tenant_id=args.tenant, mode=args.mode
+        )
     finally:
         store.close()
-    if not passages:
-        print("no passages - this query would be refused at the gate (M3)")
+    if answer.refused:
+        print("REFUSED - no grounded answer; citations withheld "
+              f"(confidence={answer.confidence:.2f}, theta={SETTINGS.confidence_theta:.2f})")
         return 0
+    print(answer.text)
+    for citation in answer.citations:
+        print(f"\n[citation] {citation.title} - {citation.section} ({citation.doc_id})")
+    print(f"confidence={answer.confidence:.2f} mode={answer.mode} "
+          f"timings={answer.timings_ms}")
+    return 0
+
+
+def _ask_raw(args: argparse.Namespace, store: Store) -> None:
+    """Passage listing mode: retrieval debugging, unchanged from M2/M3 behaviour."""
+    index = HybridIndex(store)
+    passages = index.search(args.query, tenant_id=args.tenant, k=args.k, mode=args.mode)
+    if not passages:
+        print("no passages")
+        return
     print(f"mode={args.mode} k={args.k} tenant={args.tenant!r}\n")
     for passage in passages:
         print(f"[{passage.rank}] score={passage.score:+.4f} "
               f"{passage.title} -- {passage.section}")
         snippet = " ".join(passage.text.split())[:120]
         print(f"      {snippet}{'...' if len(passage.text) > 120 else ''}")
-    return 0
 
 
 def _stats(args: argparse.Namespace) -> int:
