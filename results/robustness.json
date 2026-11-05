@@ -1,0 +1,89 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "2f792d0",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "categories": {
+    "misspelled": [
+      {
+        "category": "misspelled",
+        "id": "a003",
+        "recall": 1.0,
+        "refused": true,
+        "confidence": 0.0724,
+        "answered_right_doc": false
+      },
+      {
+        "category": "misspelled",
+        "id": "a013",
+        "recall": 1.0,
+        "refused": true,
+        "confidence": 0.0561,
+        "answered_right_doc": false
+      },
+      {
+        "category": "misspelled",
+        "id": "a015",
+        "recall": 1.0,
+        "refused": true,
+        "confidence": 0.0952,
+        "answered_right_doc": false
+      }
+    ],
+    "short": [
+      {
+        "category": "short",
+        "id": "a001",
+        "recall": 1.0,
+        "refused": false,
+        "confidence": 0.2254,
+        "answered_right_doc": true
+      },
+      {
+        "category": "short",
+        "id": "a008",
+        "recall": 1.0,
+        "refused": false,
+        "confidence": 0.2227,
+        "answered_right_doc": true
+      },
+      {
+        "category": "short",
+        "id": "a020",
+        "recall": 1.0,
+        "refused": false,
+        "confidence": 0.1505,
+        "answered_right_doc": true
+      }
+    ],
+    "long": [
+      {
+        "category": "long",
+        "id": "a003",
+        "recall": 1.0,
+        "refused": true,
+        "confidence": 0.0462,
+        "answered_right_doc": false
+      },
+      {
+        "category": "long",
+        "id": "a013",
+        "recall": 1.0,
+        "refused": true,
+        "confidence": 0.0904,
+        "answered_right_doc": false
+      },
+      {
+        "category": "long",
+        "id": "a015",
+        "recall": 1.0,
+        "refused": true,
+        "confidence": 0.0796,
+        "answered_right_doc": false
+      }
+    ]
+  }
+}
