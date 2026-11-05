@@ -1,10 +1,13 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
-**Status: implementation started.** M1–M4 are complete: corpus, hand-labeled question set, the
+**Status: implementation started.** M1–M5 are complete: corpus, hand-labeled question set, the
 index layer (ingest, chunking, store, hybrid retrieval), the first **measured baseline** on the
-frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75, with ablations in `results/`), and
-the **answer path**: extractive cited answers with the calibrated refusal gate (theta 0.13,
-safety-first, `results/calibration.md`). The HTTP surface and handover are next (M5+).
+frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75, ablations in `results/`), the
+**answer path** (extractive cited answers, calibrated safety-first refusal gate, theta 0.13,
+`results/calibration.md`), and the **HTTP API**: `GET /v1/ask` with token auth, machine-readable
+errors, four stage timings per response, one-page demo at `/`, and the NFR-01 load test
+**PASS** (p95 = 37.2 ms <= 50 ms at 10 concurrent users, `results/loadtest.md`).
+Handover is next (M6).
 
 ---
 
@@ -92,9 +95,7 @@ themselves as deltas against `results/baseline.json`.
 
 ## Repository layout
 
-Now:
-
-```
+Now:```
 README.md
 Makefile                              corpus / limits / test targets (ATL-EDD-001 §2)
 pyproject.toml                        package, ruff, pytest configuration
@@ -106,13 +107,19 @@ src/atlas/
 ├── text/{tokenize,chunk}.py         deterministic tokens · structure-aware chunking
 ├── store.py                         SQLite; idempotent, tenant-scoped
 ├── retrieval/{sparse,dense,fuse,rerank,hybrid}.py    BM25 · hashed TF-IDF · RRF · blend
-└── cli.py                           ingest · ask · stats
+├── answer.py                        gate → extract → cite, or refuse (M4)
+├── server.py                        /v1/ask JSON API, stdlib only (M5)
+└── cli.py                           ingest · ask · stats · serve
 tests/                                unit, contract and integration (pytest)
+web/demo.html                         the one-page demo served at /
+bench/load_test.py                    NFR-01 concurrent load test
+results/                              committed evidence: eval_report, calibration,
+                                      fr11_diagnosis, latency, loadtest, robustness
 docs/
 ├── … 12 design documents (01–12) …
 scripts/check_corpus.py               corpus gate
 scripts/check_limits.py               200-line ceiling gate
-.github/workflows/ci.yml              lint → size ceiling → tests → corpus
+.github/workflows/ci.yml              lint → size ceiling → tests → corpus → eval gate
 ```
 
 Later, when the MVP lands:
@@ -122,6 +129,21 @@ src/atlas/         config · text · store · retrieval · generate · pipeline 
 results/           committed evidence: eval_report.md, ablation tables
 tests/             unit · contract · integration
 ```
+
+## Run the API (60-second demo)
+
+```bash
+python -m atlas.cli serve                  # default dev server on 127.0.0.1:8070
+# with auth:  ATLAS_API_TOKEN=mytoken python -m atlas.cli serve
+curl "http://127.0.0.1:8070/v1/ask?q=What%20is%20the%20minimum%20attendance" \
+     -H "Authorization: Bearer mytoken"
+# or open http://127.0.0.1:8070/ for the one-page demo
+```
+
+Every answer is a verbatim span with its citation or an explicit refusal (theta 0.13 gate);
+wrong-token requests get `401 AUTH_REQUIRED`; empty/stopword-only queries get
+`400 INPUT_INVALID` (FR-19). The concurrent load test: start the server, then run
+`python -m bench.load_test --token mytoken` (results committed in `results/loadtest.md`).
 
 ## Roadmap
 
@@ -172,6 +194,9 @@ tests/             unit · contract · integration
 
 ## Status
 
-Design (M0), the measuring instrument (M1) and the index layer (M2) are complete; answering,
-evaluation and the measured baseline are not yet. Nothing in this repository is benchmarked,
-deployed or production-hardened, and it will not be described as if it were.
+Design (M0), the measuring instrument (M1), the index layer (M2), the measured baseline (M3),
+the calibrated answer path (M4) and the HTTP API with its load test (M5) are complete and all
+results live in `results/`. Not yet: deployment validation and the handover runbook (M6), and
+stage-2 quality work (real embeddings, trained reranker, generative answers). The API is
+local-only single-process — it is not deployed and not production-hardened, and is not
+described as if it were.
