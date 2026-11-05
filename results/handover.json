@@ -1,0 +1,92 @@
+{
+  "provenance": {
+    "commit": "17166961594a958880d67060edc2f7acf74dd0e0",
+    "generator": "scripts/repro_clone.py (M6)"
+  },
+  "verdict": "PASS",
+  "steps": [
+    {
+      "step": "archive HEAD (tracked files only, like a fresh clone)",
+      "cwd": "model 1",
+      "command": "git archive --format=tar --output C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-archive.tar HEAD",
+      "exit": 0,
+      "seconds": 0.12,
+      "stdout_tail": [],
+      "stderr_tail": []
+    },
+    {
+      "step": "unpack into clean-clone/",
+      "cwd": "atlas-handover-cl-or9xwm46",
+      "command": "tar -xf C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-archive.tar -C clean-clone",
+      "exit": 0,
+      "seconds": 0.11,
+      "stdout_tail": [],
+      "stderr_tail": []
+    },
+    {
+      "step": "setup: fresh virtualenv from the host interpreter",
+      "cwd": "atlas-handover-cl-or9xwm46",
+      "command": ".\\.venv\\Scripts\\python.exe -m venv C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-drfxv_1z",
+      "exit": 0,
+      "seconds": 10.94,
+      "stdout_tail": [],
+      "stderr_tail": [
+        "Actual environment location may have moved due to redirects, links or junctions.",
+        "  Requested location: \"C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-drfxv_1z\\Scripts\\python.exe\"",
+        "  Actual location:    \"C:\\Users\\Swayam Jain\\AppData\\Local\\Temp\\atlas-handover-env-drfxv_1z\\Scripts\\python.exe\""
+      ]
+    },
+    {
+      "step": "setup: pip install -e . (numpy only, per NFR-20 budget)",
+      "cwd": "atlas-handover-cl-or9xwm46",
+      "command": "C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-drfxv_1z\\Scripts\\python.exe -m pip install -e C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-cl-or9xwm46\\clean-clone --quiet",
+      "exit": 0,
+      "seconds": 25.44,
+      "stdout_tail": [],
+      "stderr_tail": [
+        "[notice] A new release of pip is available: 25.0.1 -> 26.3",
+        "[notice] To update, run: C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-drfxv_1z\\Scripts\\python.exe -m pip install --upgrade pip"
+      ]
+    },
+    {
+      "step": "ingest: 18 policy documents",
+      "cwd": "clean-clone",
+      "command": "C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-drfxv_1z\\Scripts\\python.exe -m atlas.cli --db data/atlas.db ingest corpus/campus",
+      "exit": 0,
+      "seconds": 1.85,
+      "stdout_tail": [
+        "ingested 34 new chunks from 18 files into tenant 'campus'"
+      ],
+      "stderr_tail": []
+    },
+    {
+      "step": "eval gate in the clean clone",
+      "cwd": "clean-clone",
+      "command": "C:\\Users\\SWAYAM~1\\AppData\\Local\\Temp\\atlas-handover-env-drfxv_1z\\Scripts\\python.exe -m eval.run_eval --gate",
+      "exit": 0,
+      "seconds": 0.74,
+      "stdout_tail": [
+        "gate: recall@10 0.8750 (baseline 0.8750)",
+        "gate: refusal accuracy 1.0000 (minimum 0.9)",
+        "gate ok"
+      ],
+      "stderr_tail": []
+    },
+    {
+      "step": "serve smoke: /v1/healthz + one /v1/ask",
+      "exit": 0,
+      "seconds": "-",
+      "healthz_status": 200,
+      "ask_status": 200,
+      "ask_refused": false,
+      "has_timings": false
+    }
+  ],
+  "fresh_eval": {
+    "recall_at_10": 0.875,
+    "refusal_accuracy": 1.0,
+    "expected_recall": 0.875,
+    "expected_refusal": 1.0,
+    "method": "eval_report.json written by the clean clone itself"
+  }
+}
