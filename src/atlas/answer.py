@@ -11,13 +11,19 @@ FR-19: an empty or stopword-only query is an InputError (HTTP 400 upstream).
 
 from __future__ import annotations
 
+import os
 import time
 import uuid
 
+from .breaker import CircuitBreaker, CircuitOpen
 from .config import SETTINGS, Settings
-from .interfaces import Answer, Citation, InputError, Passage
+from .guard import scan
+from .interfaces import Answer, Citation, DependencyError, InputError, Passage
 from .retrieval import HybridIndex
 from .text.tokenize import sentences, tokenize
+
+# One breaker per process: generation is a shared dependency, not a per-request one.
+_GENERATOR_BREAKER = CircuitBreaker(threshold=SETTINGS.breaker_threshold)
 
 
 def answer_query(
@@ -33,6 +39,24 @@ def answer_query(
     total_start = time.perf_counter()
     if not tokenize(query):
         raise InputError("empty or stopword-only query")  # FR-19, maps to 400
+    verdict = scan(query)  # NFR-10: refuse injection-shaped input before retrieval
+    if verdict.blocked:
+        return Answer(
+            query=query,
+            text="",
+            citations=(),
+            confidence=0.0,
+            refused=True,
+            mode="blocked",
+            degraded=False,
+            timings_ms={
+                "retrieve_ms": 0.0,
+                "gate_ms": _ms(time.perf_counter() - total_start),
+                "extract_ms": 0.0,
+                "total_ms": _ms(time.perf_counter() - total_start),
+            },
+            trace_id=trace_id,
+        )
 
     retrieve_start = time.perf_counter()
     report = index.diagnostics(query, tenant_id=tenant_id, mode=mode)
@@ -67,7 +91,18 @@ def answer_query(
         )
 
     extract_start = time.perf_counter()
-    text = _extract(query, passage, max_sentences=settings.max_answer_sentences)
+    degraded = False
+    try:
+        text = _GENERATOR_BREAKER.call(
+            lambda: _extract(query, passage, max_sentences=settings.max_answer_sentences)
+        )
+    except (CircuitOpen, DependencyError, TimeoutError):
+        # NFR-16 degraded mode: generation failed or was skipped, so answer from the
+        # retrieved passage verbatim and SAY SO (degraded=True). The breaker's job is to
+        # stop paying the failure twice: after the threshold, the call is not attempted
+        # at all, which is the difference between a degraded answer and a slow one.
+        text = passage.text[: settings.citation_snippet_chars]
+        degraded = True
     timings["extract_ms"] = _ms((time.perf_counter() - extract_start) * 1000.0)
     timings["total_ms"] = _ms((time.perf_counter() - total_start) * 1000.0)
     citations = (
@@ -86,13 +121,16 @@ def answer_query(
         confidence=confidence,
         refused=False,
         mode=mode,
-        degraded=False,
+        degraded=degraded,
         timings_ms=timings,
         trace_id=trace_id,
     )
 
 
 def _extract(query: str, passage: Passage, *, max_sentences: int) -> str:
+    """The generator. `_failing()` is the fault injection the degraded path is measured with."""
+    if _failing():
+        raise DependencyError("simulated generator failure")
     """The best sentence run from ONE passage, verbatim, bounded (FR-13, FR-18).
 
     Sentences are scored by how many unseen query tokens they cover; ties are
@@ -125,3 +163,8 @@ def _extract(query: str, passage: Passage, *, max_sentences: int) -> str:
 
 def _ms(seconds: float) -> float:
     return round(seconds, 3)
+
+
+def _failing() -> bool:
+    """Fault injection for the degraded-mode evidence (ATLAS_FAULT=generator)."""
+    return os.environ.get("ATLAS_FAULT", "") == "generator"
