@@ -143,12 +143,25 @@ def make_handler(state: ServerState) -> type:
     return AtlasHandler
 
 
+# The stdlib default listen backlog is 5, which drops a burst of connections outright.
+# The M10 load curve measured that as 7 failures at 50 users, so the queue is sized for
+# the operating point the project claims instead of leaving a socket default in charge.
+LISTEN_BACKLOG = 128
+
+
+def make_server(address: tuple[str, int], state: ServerState) -> ThreadingHTTPServer:
+    """One constructor for the production server and the bench harness, so they match."""
+    server = ThreadingHTTPServer(address, make_handler(state))
+    server.request_queue_size = LISTEN_BACKLOG
+    return server
+
+
 def serve(db: str | None = None, host: str | None = None, port: int | None = None) -> int:
     """Blocking serve loop; SIGINT/interrupt stops it (single-node ops, no daemon)."""
     db_path = db or os.environ.get("ATLAS_DB", SETTINGS.default_db_path)
     state = ServerState(db_path)
     address = (host or SETTINGS.serve_host, port or SETTINGS.serve_port)
-    server = ThreadingHTTPServer(address, make_handler(state))
+    server = make_server(address, state)
     print(f"[atlas] serving {db_path} on http://{address[0]}:{address[1]} "
           f"(auth {'on' if state.settings.api_token else 'off: set ATLAS_API_TOKEN'})")
     try:

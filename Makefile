@@ -7,7 +7,7 @@ VENV_PY ?= $(PY)
 # on a Windows checkout the venv interpreter is .venv/Scripts/python.exe;
 # on Unix .venv/bin/python - set VENV_PY accordingly when using venv targets.
 
-.PHONY: corpus limits test eval embed safety check ci setup ingest serve handover
+.PHONY: corpus limits test eval embed safety bench soak check ci setup ingest serve handover
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -28,6 +28,13 @@ embed:
 # stage-2 layer 2 (M9): injection suite, tenant probes, log audit, degraded mode
 safety:
 	$(PY) -m eval.safety
+
+# M10: latency curve at 1/10/50 users, then a 30-minute soak at the NFR-01 operating point
+bench:
+	$(PY) -m bench.sweep
+
+soak:
+	$(PY) -m bench.sweep --soak-seconds 1800 --users 10
 
 check: limits corpus test
 
