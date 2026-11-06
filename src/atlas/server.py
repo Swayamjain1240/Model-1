@@ -26,6 +26,7 @@ from urllib.parse import parse_qs, urlparse
 from .answer import answer_query
 from .config import SETTINGS, Settings
 from .interfaces import AtlasError, InputError
+from .obs import redact
 from .retrieval import HybridIndex
 from .store import Store
 
@@ -136,7 +137,8 @@ def make_handler(state: ServerState) -> type:
             self.wfile.write(body)
 
         def log_message(self, fmt: str, *args) -> None:
-            print(f"[atlas] {self.client_address[0]} {fmt % args}")
+            # NFR-11: the request line carries the user's question, so it is redacted here
+            print(redact(f"[atlas] {self.client_address[0]} {fmt % args}"))
 
     return AtlasHandler
 
