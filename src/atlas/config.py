@@ -26,9 +26,21 @@ class Settings:
     dense_dim: int = 1024
     embedder_name: str = "hashed-tfidf-d1024"
 
+    # stage-2 trained encoder (ATL-TDD-001 s.10). Opt-in, because C-3/NFR-17 make the
+    # offline hashed stand-in the default: ATLAS_EMBEDDER=potion-base-8M selects the real
+    # one. results/embeddings.md is the only place the swap is allowed to argue.
+    embedder_kind: str = os.environ.get("ATLAS_EMBEDDER", "hashed-tfidf-d1024")
+    trained_model: str = "minishlab/potion-base-8M"
+    trained_dim: int = 256
+    embedder_cache_dir: str = "data/embedder_cache"  # vectors, never committed
+
     # fusion + rerank (ATL-TDD-001 s.5-s.6); rrf_k is swept by the ablation
     rrf_k: int = 60
     rrf_k_candidates: tuple[int, ...] = (10, 60, 100)
+    # per-retriever evidence weights in the fusion blend; 1.0/1.0 is classic RRF,
+    # and the stage-2 ablation (results/embeddings.md) is the only thing that may move them
+    rrf_weight_sparse: float = 1.0
+    rrf_weight_dense: float = 1.0
     rerank_weight_fuse: float = 0.40
     rerank_weight_coverage: float = 0.40
     rerank_weight_bigram: float = 0.15
@@ -49,6 +61,22 @@ class Settings:
     confidence_coverage_weight: float = 0.35
     theta_candidates: tuple[float, ...] = (0.20, 0.25, 0.30, 0.35, 0.40)
 
+    # theta is a property of the SCORE SCALE, so each embedder carries its own
+    # calibrated knee (results/embeddings.md, M7). Sharing one number across two
+    # embedders would silently compare two different rulers.
+    confidence_theta_trained: float = 0.31
+    theta_candidates_trained: tuple[float, ...] = (
+        0.20,
+        0.25,
+        0.28,
+        0.30,
+        0.31,
+        0.33,
+        0.35,
+        0.38,
+        0.40,
+    )
+
     # answers (ATL-TDD-001 s.8)
     max_answer_sentences: int = 4
     max_citations: int = 5
@@ -62,6 +90,21 @@ class Settings:
     api_token: str = os.environ.get("ATLAS_API_TOKEN", "")
     serve_host: str = "127.0.0.1"
     serve_port: int = 8070
+
+    @property
+    def trained(self) -> bool:
+        """True when a trained encoder is selected instead of the hashed stand-in."""
+        return self.embedder_kind not in (self.embedder_name, "hashed")
+
+    @property
+    def theta(self) -> float:
+        """The calibrated gate threshold for the selected embedder's score scale."""
+        return self.confidence_theta_trained if self.trained else self.confidence_theta
+
+    @property
+    def theta_grid(self) -> tuple[float, ...]:
+        """Sweep grid matching the selected scale (harness and calibration read this)."""
+        return self.theta_candidates_trained if self.trained else self.theta_candidates
 
 
 SETTINGS = Settings()
