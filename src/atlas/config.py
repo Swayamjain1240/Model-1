@@ -91,6 +91,10 @@ class Settings:
     default_db_path: str = "data/atlas.db"
     default_tenant: str = "campus"
 
+    # degraded mode (NFR-16): consecutive generation failures before the breaker opens
+    breaker_threshold: int = 2
+    breaker_cooldown_s: float = 30.0
+
     # API (M5): the token comes from the environment, never from the repo
     api_token: str = os.environ.get("ATLAS_API_TOKEN", "")
     serve_host: str = "127.0.0.1"
