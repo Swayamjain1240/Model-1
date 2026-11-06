@@ -1,0 +1,43 @@
+{
+  "name": "logreg-pairwise",
+  "objective": "pairwise",
+  "features": [
+    "cosine",
+    "bm25",
+    "rrf",
+    "coverage",
+    "bigram",
+    "title",
+    "section",
+    "length"
+  ],
+  "weights": [
+    1.458995,
+    2.20722,
+    1.197221,
+    0.80232,
+    0.0,
+    0.948739,
+    0.246322,
+    -0.666342
+  ],
+  "trained_on": {
+    "documents": [
+      "admission-policy",
+      "attendance-policy",
+      "branch-transfer",
+      "code-of-conduct-discipline",
+      "examination-rules",
+      "fee-payment-and-refund",
+      "hostel-rules",
+      "internship-guidelines",
+      "medical-and-counseling",
+      "minor-and-honors",
+      "scholarship-merit",
+      "scholarship-need-based"
+    ],
+    "queries": 14,
+    "pairs": 475
+  },
+  "adopted": false
+}
