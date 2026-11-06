@@ -104,8 +104,10 @@ def make_handler(state: ServerState) -> type:
                 "trace_id": answer.trace_id,
                 "timings": {
                     **answer.timings_ms,
+                    # total_ms is the sum of the stages, so it must not be added again here:
+                    # doing so made this field negative and quietly lied about the overhead.
                     "serialize_ms": round((time.perf_counter() - started) * 1000.0, 3)
-                    - sum(answer.timings_ms.values()),
+                    - sum(v for k, v in answer.timings_ms.items() if k != "total_ms"),
                     "total_ms": round((time.perf_counter() - started) * 1000.0, 3),
                 },
             }

@@ -7,7 +7,7 @@ VENV_PY ?= $(PY)
 # on a Windows checkout the venv interpreter is .venv/Scripts/python.exe;
 # on Unix .venv/bin/python - set VENV_PY accordingly when using venv targets.
 
-.PHONY: corpus limits test eval embed safety bench soak check ci setup ingest serve handover
+.PHONY: corpus limits test eval embed safety bench soak dashboard trace gate-demo check ci setup ingest serve handover
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -35,6 +35,16 @@ bench:
 
 soak:
 	$(PY) -m bench.sweep --soak-seconds 1800 --users 10
+
+# M10: the dashboard is generated from results/*.json, so it cannot drift from the reports
+dashboard:
+	$(PY) scripts/dashboard.py
+
+trace:
+	$(PY) scripts/trace_sample.py
+
+gate-demo:
+	$(PY) scripts/ci_gate_demo.py
 
 check: limits corpus test
 
