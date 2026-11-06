@@ -13,6 +13,8 @@ NFR-01 (p95 <= 50 ms at 10 users): **PASS** (p95 43.25 ms).
 Method: real `ThreadingHTTPServer` over a temporary database, one client PROCESS per user with a persistent keep-alive connection, 100 requests per user per level.
 The curve is the point: a single number cannot show where the knee is.
 
+The 30-minute soak holds this same load (10 users) and reads p95 58.40 ms, so the target is met in a burst and missed under sustained saturation. Both are reported; `results/soak.md` is the stricter reading.
+
 ## Interpretation
 
 - p95 grows 53.4x from 1 to 50 users (4.4 -> 233.9 ms) while throughput reaches 359 rps, so the

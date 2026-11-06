@@ -1,6 +1,6 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
-**Status: MVP complete, stage 2 started.** M1–M6 built the measured MVP: corpus, hand-labeled
+**Status: MVP and stage 2 complete except FR-11.** M1–M6 built the measured MVP: corpus, hand-labeled
 question set, index layer (ingest, chunking, store, hybrid retrieval), the first **measured
 baseline** on the frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75), the **answer
 path** (extractive cited answers, safety-first refusal gate), the **HTTP API** (`GET /v1/ask`,
@@ -10,7 +10,7 @@ token auth, machine-readable errors, four stage timings, one-page demo at `/`, N
 
 M7 replaced the hashed stand-in with a **real pretrained encoder** (`potion-base-8M`, 256-d,
 CPU-only) and re-measured the same frozen set: **dense recall@10 0.75 → 1.00**, and the gate's
-honest **answer rate 0.08 → 0.96** at refusal accuracy 1.00 with theta re-calibrated per score
+honest **answer rate 0.29 → 0.96** at refusal accuracy 1.00 with theta re-calibrated per score
 scale (0.31, `results/embeddings.md`). The remaining open requirement is **FR-11**: with a strong
 dense side, hybrid 0.92 still trails dense alone 1.00, and the ablation shows the hand-tuned
 rerank blend — not fusion — is what demotes correct chunks. That is the next layer's job.
@@ -25,6 +25,20 @@ refused** (98% by the guard alone, the rest by the gate), **0 cross-tenant leaks
 probes against a tenant holding a byte-identical copy of a campus document, **0 raw personal
 values** in 133 captured log lines, and **3/3 degraded answers** with generation failing on
 purpose (`results/safety.md`).
+
+M10 closed the operations layer without a container: a **latency curve** at 1/10/50 users
+(**NFR-01 PASS in a burst**: p95 43.25 ms at 10 users, 0 failures, 359 rps at 50) and a
+30-minute soak that **misses the same target** — p95 58.40 ms with 0 failures over 628,983
+requests — because sustained saturation leaves a queue that a few-second burst never builds.
+Both readings are committed; the stricter one is the one quoted next to the target. a
+**dashboard generated from the committed reports** (`dashboard.html`), **six decision records**
+with their rejected alternatives (`docs/adr/`), a request **waterfall** that caught a negative
+`serialize_ms` shipping since M5, and a **demonstrated CI-gate failure** so the quality gate is
+a control rather than a claim (`results/ci_gate.md`). The **ablation finally has a control arm**
+(`results/ablation.md`): five configurations × two encoders, one change per row, each rate with
+n=24 and a 95% Wilson interval — which is what turns "the reranker is the bottleneck" from an
+inference into a measurement, and shows the blend only *helps* while the encoder is the hashed
+stand-in.
 
 ---
 
@@ -47,7 +61,7 @@ Upload your own documents, ask a question in plain language, and get:
 | An answer **built only from your documents** | The system has no outside knowledge to invent from |
 | **Passage-level citations** (`[1]`, `[2]` → document + section) | Every claim can be checked by a human |
 | **Refusal** when the evidence is weak | "I don't know" is a feature; a confident wrong answer is not |
-| **Escalation** to a person when confidence is low | The system assists the decision, it does not make it |
+| **An escalation signal** when confidence is low | A refusal carries `confidence` and `trace_id`, so a UI or queue can route it to a person; there is no ticket-system integration, and this line says so rather than implying one |
 | **Strict tenant separation** | One organisation's documents can never surface in another's answers |
 
 ## What this project is actually about
@@ -62,7 +76,7 @@ reproducible**:
 
 A design decision without a measurement attached is treated as unfinished work.
 
-## Architecture (planned)
+## Architecture
 
 ```
 documents (*.md)
@@ -136,12 +150,20 @@ bench/load_test.py                    NFR-01 concurrent load test
 eval/embeddings.py                    stage-2 encoder delta harness (M7)
 eval/rerank_train.py                  document-held-out reranker training (M8)
 eval/safety.py                        injection, tenancy, log and degraded suite (M9)
+bench/sweep.py                        latency curve at 1/10/50 users, plus a soak (M10)
+scripts/dashboard.py                  results/*.json -> dashboard.html (M10)
+scripts/trace_sample.py               one request's stage waterfall (M10)
+scripts/ci_gate_demo.py               proves the quality gate fails when it should (M10)
 results/                              committed evidence: eval_report, calibration,
-                                      fr11_diagnosis, latency, loadtest, robustness,
-                                      embeddings, handover
+                                      fr11_diagnosis, ablation, latency, loadtest,
+                                      robustness, embeddings, rerank, safety, bench,
+                                      soak, trace, ci_gate, handover
+dashboard.html                        the dashboard: opens from disk, no server needed
 docs/
 ├── … 12 design documents (01–12) …
 ├── 13-handover-runbook.md           how to run, prove, and extend (M6)
+├── 14-request-trace.md              the life of one request, with measured stages (M10)
+├── adr/                             six decision records, each with what it rejected (M10)
 scripts/check_corpus.py               corpus gate
 scripts/check_limits.py               200-line ceiling gate
 .github/workflows/ci.yml              lint → size ceiling → tests → corpus → eval gate
@@ -170,6 +192,24 @@ wrong-token requests get `401 AUTH_REQUIRED`; empty/stopword-only queries get
 `400 INPUT_INVALID` (FR-19). The concurrent load test: start the server, then run
 `python -m bench.load_test --token mytoken` (results committed in `results/loadtest.md`).
 
+## Reproduce every number
+
+Every claim in this README comes from a target that rewrites a file in `results/`:
+
+| Command | Produces | Headline |
+|---|---|---|
+| `make eval` | `results/eval_report.md` | recall@10 sparse 0.96 · hybrid 0.88 · dense 0.75 (frozen set) |
+| `make embed` | `results/embeddings.md` | encoder swap: dense recall@10 0.75 → 1.00, answer rate 0.29 → 0.96 |
+| `make ablation` | `results/ablation.md` | five configurations × two encoders, control arm, 95% Wilson intervals |
+| `python -m eval.rerank_train` | `results/rerank.md` | trained reranker 0.90 held-out vs dense 1.00 → not adopted |
+| `make safety` | `results/safety.md` | 40/40 attacks refused, 0 tenant leaks, 0 PII in logs, 3/3 degraded |
+| `make bench` | `results/bench.md` | NFR-01 burst PASS: p95 43.25 ms at 10 users, 359 rps at 50 |
+| `make soak` | `results/soak.md` | 30 minutes at 10 users: 0 failures, but p95 58.40 ms — NFR-01 missed under sustained load |
+| `make trace` | `results/trace.md` | per-stage waterfall: retrieval is ~87% of a request |
+| `make dashboard` | `dashboard.html` | all of the above on one page, generated from the JSON |
+| `make gate-demo` | `results/ci_gate.md` | the CI gate failing on purpose, exit code 1 |
+| `make ci` | terminal | lint → 200-line ceiling → tests → corpus → eval gate |
+
 ## Roadmap
 
 **MVP** — six steps, each ending in something measurable:
@@ -183,13 +223,16 @@ wrong-token requests get `401 AUTH_REQUIRED`; empty/stopword-only queries get
 
 **After the MVP** — each layer reported as a delta against that baseline:
 
-- ~~real embedding model~~ **done (M7):** dense recall@10 0.75 → 1.00, answer rate 0.08 → 0.96
+- ~~real embedding model~~ **done (M7):** dense recall@10 0.75 → 1.00, answer rate 0.29 → 0.96
   (`results/embeddings.md`) — and trained reranker (retrieval quality), still open (FR-11)
 - LLM generation + claim-level grounding verifier (faithfulness, cost)
 - explicit workflow states: route → rewrite → retrieve → rerank → verify → answer/refuse/escalate
-- safety: tenant isolation in the data layer, roles, PII masking, injection suite
-- performance: batching, cache, circuit breaker, load tests, soak test
-- operations: metrics dashboard, CI quality gate, runbook, decision records
+- ~~safety~~ **done (M9):** injection suite, tenancy probes, log redaction, degraded mode
+  (`results/safety.md`) — roles and PII masking on stored text remain open
+- ~~performance~~ **done (M9–M10):** circuit breaker, load curve, soak, request trace
+  (`results/bench.md`, `results/trace.md`) — batching and a response cache remain open
+- ~~operations~~ **done (M10):** dashboard, a quality gate demonstrated to fail, runbook,
+  decision records
 
 ## Design constraints
 
@@ -217,6 +260,9 @@ wrong-token requests get `401 AUTH_REQUIRED`; empty/stopword-only queries get
 | 10 | [Engineering Design](docs/10-engineering-design.md) | build, test, CI, logging, metrics, release, runbook |
 | 11 | [RFC-0001](docs/11-rfc-0001-mvp-retrieval-and-refusal.md) | the proposal for hybrid retrieval + refusal, with alternatives |
 | 12 | [Solution Design](docs/12-solution-design.md) | the problem in business terms, journeys, cost, rollout |
+| 13 | [Handover Runbook](docs/13-handover-runbook.md) | how to run it, prove it, and extend it |
+| 14 | [Request Trace](docs/14-request-trace.md) | the life of one request, stage by stage |
+| — | [Decision records](docs/adr/) | six decisions, each with the alternative it rejected and the report behind it |
 
 ## Status
 
@@ -235,3 +281,12 @@ keeps the default offline (C-3, NFR-17): `ATLAS_EMBEDDER=potion-base-8M python -
 and every embedded text is cached on disk so a warm run needs no network. The runbook
 (`docs/13-handover-runbook.md`) states the limitations openly: single node, single process, not
 deployed, FR-11 still unmet, and a 0.011 gate margin measured on six unanswerable questions.
+
+Stage 2 is now closed except for that one requirement. What the four stages changed, in one
+line each: the encoder made the gate usable (M7), the trained reranker was built, measured and
+**not shipped** because it lost out of sample (M8), the safety layer turned into numbers instead
+of intentions (M9), and the operations layer became a curve, a soak, a dashboard and a gate that
+provably fails (M10). FR-11's evidence is `results/rerank.md` and `results/fr11_diagnosis.md`:
+the hand-tuned rerank blend, not fusion, is what demotes correct chunks — replacing it with a
+learned model did not beat dense-only on held-out documents, so the honest state is *open with a
+measured cause*, not *done*.

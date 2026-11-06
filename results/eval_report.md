@@ -1,21 +1,21 @@
 # Atlas eval report — first measured baseline (M3)
 
-Command: `python -m eval.run_eval` · corpus: `corpus/campus (18 documents, frozen at M1)` · commit `8f8526c`
+Command: `python -m eval.run_eval` · corpus: `corpus/campus (18 documents, frozen at M1)` · commit `87a5222`
 Platform: Windows-11-10.0.26300-SP0 · Python 3.12.10
 
 ## Retrieval metrics (answerable set, doc-level labels)
 
-| mode | recall@10 | precision@5 (slots) | precision@5 (capped) | nDCG@10 | MRR |
+| mode | recall@10 (95% CI, n) | precision@5 (slots) | precision@5 (capped) | nDCG@10 | MRR |
 |---|---|---|---|---|---|
-| sparse | 0.96 | 0.20 | 0.88 | 0.82 | 0.79 |
-| dense | 0.75 | 0.12 | 0.52 | 0.47 | 0.40 |
-| hybrid | 0.88 | 0.18 | 0.79 | 0.71 | 0.65 |
+| sparse | 0.9583 [0.798, 0.993] (n=24) | 0.20 | 0.88 | 0.82 | 0.79 |
+| dense | 0.7500 [0.551, 0.880] (n=24) | 0.12 | 0.52 | 0.47 | 0.40 |
+| hybrid | 0.8750 [0.690, 0.957] (n=24) | 0.18 | 0.79 | 0.73 | 0.68 |
 
 ## Theta sweep (hybrid, confidence = 0.65·cosine + 0.35·coverage)
 
 | theta | answer rate | refusal accuracy |
 |---|---|---|
-| 0.20 | 0.00 | 1.00 |
+| 0.20 | 0.08 | 1.00 |
 | 0.25 | 0.00 | 1.00 |
 | 0.30 | 0.00 | 1.00 |
 | 0.35 | 0.00 | 1.00 |
@@ -25,11 +25,11 @@ Platform: Windows-11-10.0.26300-SP0 · Python 3.12.10
 
 | rrf_k | recall@10 |
 |---|---|
-| 10 | 0.83 |
+| 10 | 0.88 |
 | 60 | 0.88 |
 | 100 | 0.88 |
 
-Chosen theta: **0.20** — selection rule: maximise refusal accuracy, tie-break by retaining most answerable queries, then the lowest theta.
+Chosen theta: **0.25** — selection rule: maximise refusal accuracy, tie-break by retaining most answerable queries, then the lowest theta.
 Chosen outcome: answer rate 0.00, refusal accuracy 1.00.
 
 ## Interpretation

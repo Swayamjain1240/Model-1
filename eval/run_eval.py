@@ -186,13 +186,21 @@ def render_markdown(payload: dict) -> str:
         "",
         "## Retrieval metrics (answerable set, doc-level labels)",
         "",
-        "| mode | recall@10 | precision@5 (slots) | precision@5 (capped) | nDCG@10 | MRR |",
+        "| mode | recall@10 (95% CI, n) | precision@5 (slots) | precision@5 (capped) "
+        "| nDCG@10 | MRR |",
         "|---|---|---|---|---|---|",
     ]
     for mode, summary in payload["modes"].items():
         agg = summary["aggregate"]
+        interval = summary.get("intervals", {}).get("recall_at_10", {})
+        recall_cell = f"{agg['recall_at_10']:.2f}"
+        if interval:
+            recall_cell = (
+                f"{interval['mean']:.4f} "
+                f"[{interval['ci_low']:.3f}, {interval['ci_high']:.3f}] (n={interval['n']})"
+            )
         lines.append(
-            f"| {mode} | {agg['recall_at_10']:.2f} | {agg['precision_at_5']:.2f} "
+            f"| {mode} | {recall_cell} | {agg['precision_at_5']:.2f} "
             f"| {agg['precision_capped_at_5']:.2f} "
             f"| {agg['ndcg_at_10']:.2f} | {agg['mrr']:.2f} |"
         )
@@ -245,9 +253,14 @@ def render_markdown(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def run_gate() -> int:
-    """Hard gate: rerun hybrid and compare against the committed baseline (ATL-EDD-001 §7)."""
-    baseline = json.loads((RESULTS / "baseline.json").read_text(encoding="utf-8"))
+def run_gate(baseline_path: Path | None = None) -> int:
+    """Hard gate: rerun hybrid and compare against the committed baseline (ATL-EDD-001 §7).
+
+    `baseline_path` exists so the failure path can be demonstrated against a deliberately
+    inflated baseline (`scripts/ci_gate_demo.py`) instead of by breaking retrieval on purpose.
+    """
+    path = baseline_path or RESULTS / "baseline.json"
+    baseline = json.loads(path.read_text(encoding="utf-8"))
     store = build_store(SETTINGS.default_tenant)
     try:
         result = run_mode(store, SETTINGS.default_tenant, "hybrid")
@@ -276,9 +289,10 @@ def run_gate() -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="frozen-set evaluation harness")
     parser.add_argument("--gate", action="store_true", help="rerun hybrid and compare to baseline")
+    parser.add_argument("--baseline", type=Path, default=None, help="baseline json for --gate")
     args = parser.parse_args()
     if args.gate:
-        return run_gate()
+        return run_gate(args.baseline)
 
     payload: dict = {"provenance": provenance(), "modes": {}}
     store = build_store(SETTINGS.default_tenant)
@@ -288,8 +302,20 @@ def main() -> int:
             table = theta_sweep(result["confidence_a"], result["confidence_u"])
             chosen_theta = choose_theta(table)
             chosen = next(entry for entry in table if entry["theta"] == chosen_theta)
+            answer_rows = [row for row in result["rows"] if row["id"].startswith("a")]
             payload["modes"][mode] = {
                 "aggregate": aggregate(result["rows"]),
+                # n and a 95% Wilson interval per metric: 24 questions is a small sample,
+                # and a point estimate without its interval invites over-reading.
+                "intervals": {
+                    metric: metrics.rate_with_ci([row[key] for row in answer_rows])
+                    for metric, key in (
+                        ("recall_at_10", "recall"),
+                        ("precision_capped_at_5", "precision5c"),
+                        ("ndcg_at_10", "ndcg"),
+                        ("mrr", "mrr"),
+                    )
+                },
                 "sweep": table,
                 "chosen": chosen,
             }

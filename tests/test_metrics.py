@@ -9,8 +9,10 @@ from eval.metrics import (
     precision_at_k,
     precision_capped_at_k,
     rank_documents,
+    rate_with_ci,
     recall_at_k,
     refusal_counts,
+    wilson_interval,
 )
 
 
@@ -67,3 +69,24 @@ def test_refusal_counts_gate_outcomes():
     assert outcome == {"answer_rate": 0.5, "refusal_accuracy": 0.5}
     all_refused = refusal_counts([0.9], [0.01, 0.02], theta=0.25)
     assert all_refused["refusal_accuracy"] == 1.0
+
+
+def test_wilson_interval_stays_inside_zero_and_one():
+    """Near-1.0 rates are why the normal approximation was rejected: it overshoots."""
+    low, high = wilson_interval(24, 24)
+    assert 0.0 <= low < 1.0
+    assert high <= 1.0
+    assert low > 0.8
+
+
+def test_wilson_interval_brackets_the_point_estimate():
+    low, high = wilson_interval(18, 24)
+    assert low < 0.75 < high
+    assert low > 0.5 and high < 0.95
+
+
+def test_rate_with_ci_reports_n_and_mean():
+    stats = rate_with_ci([1.0, 0.0, 1.0, 1.0])
+    assert stats["n"] == 4
+    assert stats["mean"] == 0.75
+    assert stats["ci_low"] < stats["mean"] < stats["ci_high"]

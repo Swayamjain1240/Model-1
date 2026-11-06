@@ -165,6 +165,21 @@ def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
     return row
 
 
+def soak_line(ten: dict | None) -> list[str]:
+    """Cross-reference the soak, so a burst PASS is never read as a sustained PASS."""
+    path = RESULTS / "soak.json"
+    if not ten or not path.exists():
+        return []
+    row = json.loads(path.read_text(encoding="utf-8")).get("row", {})
+    if not row or row.get("users") != ten["users"]:
+        return []
+    return [
+        f"The 30-minute soak holds this same load ({row['users']} users) and reads p95 "
+        f"{row['p95_ms']:.2f} ms, so the target is met in a burst and missed under sustained "
+        "saturation. Both are reported; `results/soak.md` is the stricter reading.",
+    ]
+
+
 def write_bench(rows: list[dict], payload: dict) -> None:
     RESULTS.mkdir(exist_ok=True)
     (RESULTS / "bench.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -192,6 +207,8 @@ def write_bench(rows: list[dict], payload: dict) -> None:
         "Method: real `ThreadingHTTPServer` over a temporary database, one client PROCESS "
         "per user with a persistent keep-alive connection, 100 requests per user per level.",
         "The curve is the point: a single number cannot show where the knee is.",
+        "",
+        *soak_line(ten),
         "",
         "## Interpretation",
         "",
@@ -258,6 +275,19 @@ def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
     return [
         f"- p95 after {row['duration_seconds'] / 60:.0f} minutes: {row['p95_ms']:.2f} ms, "
         f"{drift}. A leak or an unbounded cache would show here as growth.",
+        f"- NFR-01 is written at {NFR01_USERS} users, and this run is exactly that load held "
+        f"for {row['duration_seconds'] / 60:.0f} minutes: p95 {row['p95_ms']:.2f} ms against a "
+        f"{NFR01_P95_MS:.0f} ms target, so read strictly NFR-01 "
+        + ("passes." if row["p95_ms"] <= NFR01_P95_MS else "FAILS."),
+        (
+            "- The short curve meets the same threshold at the same user count, because it "
+            "lasts a few seconds. Both readings are real: the burst measures the server, the "
+            "soak measures the server plus a queue that never empties. Quoting only the burst "
+            "would be choosing the flattering number."
+            if row["p95_ms"] > NFR01_P95_MS
+            else "- Unlike the burst, this run cannot borrow credit from an idle moment: the "
+            "threshold holds under sustained load."
+        ),
         f"- Error rate {row['error_rate'] * 100:.3f}% over {row['requests']} requests; these are",
         "  dropped connections, and none of them changed an answer's content.",
         "- The per-tenant view is the only thing that grows with traffic, and it is keyed by",
@@ -272,7 +302,31 @@ def main() -> int:
     parser.add_argument("--soak-seconds", type=float, default=0.0)
     parser.add_argument("--users", type=int, default=NFR01_USERS)
     parser.add_argument("--token", default="")
+    parser.add_argument(
+        "--render-existing",
+        action="store_true",
+        help="rewrite bench.md/soak.md from the committed json, without running load",
+    )
     args = parser.parse_args()
+
+    if args.render_existing:
+        bench_payload = json.loads((RESULTS / "bench.json").read_text(encoding="utf-8"))
+        write_bench(bench_payload["rows"], bench_payload)
+        soak_path = RESULTS / "soak.json"
+        if soak_path.exists():
+            soak_payload = json.loads(soak_path.read_text(encoding="utf-8"))
+            entry = next(
+                (item for item in bench_payload["rows"]
+                 if item["users"] == soak_payload["row"]["users"]),
+                None,
+            )
+            # notes are recomputed, not replayed: the prose is code, the numbers are data
+            soak_payload["notes"] = notes_for_soak(
+                soak_payload["row"], entry["p95_ms"] if entry else None
+            )
+            write_soak(soak_payload["row"], soak_payload)
+        print("re-rendered: results/bench.md, results/soak.md")
+        return 0
     answerable, _ = load_questions()
     questions = [row["query"] for row in answerable]
     db = Path(tempfile.mkdtemp()) / "bench.db"

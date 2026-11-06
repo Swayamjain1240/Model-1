@@ -7,6 +7,7 @@ from conftest import MINI_CORPUS
 
 from atlas.interfaces import InputError, Passage
 from atlas.retrieval import HybridIndex
+from atlas.text.tokenize import bigrams, tokenize
 
 
 def test_supports_all_three_modes(mini_index):
@@ -137,3 +138,18 @@ def _fresh_store(tmp_path, *, add_duplicate: bool = False):
         )
         store.upsert_document(tenant_id="campus", path=dup)
     return store
+
+
+def test_cached_bigrams_come_from_document_order_not_set_order(mini_index):
+    """Regression (M10): pairs built from a set follow hash order, not the text.
+
+    With per-process hash randomisation that made the *feature values* differ between
+    identical runs, which flipped near-ties and moved nDCG/MRR while recall stayed put.
+    The pair set must be a function of the text alone.
+    """
+    view = mini_index.view("campus")
+    assert view is not None
+    chunk = view._chunks[0]
+    expected = set(bigrams(tokenize(chunk.text)))
+    cached = view._reranker._chunk_features[0][1]
+    assert cached == expected

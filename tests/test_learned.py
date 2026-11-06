@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 
 from atlas.config import SETTINGS
-from atlas.retrieval.learned import FEATURES, LearnedReranker, build_reranker
+from atlas.retrieval.learned import FEATURES, LearnedReranker, NullReranker, build_reranker
 from atlas.retrieval.rerank import Reranker
 from atlas.text.tokenize import bigrams
 
@@ -61,6 +61,23 @@ def test_an_adopted_model_replaces_the_blend(tmp_path):
 def test_explicit_blend_kind_ignores_a_good_model(tmp_path):
     settings = settings_with(tmp_path, kind="blend", payload=model())
     assert isinstance(build_reranker(IDF, settings=settings), Reranker)
+
+
+def test_kind_none_keeps_fusion_order(tmp_path):
+    """The ablation's control arm: no reordering, so only the ranker varies between rows."""
+    settings = settings_with(tmp_path, kind="none", payload=model())
+    reranker = build_reranker(IDF, settings=settings)
+    assert isinstance(reranker, NullReranker)
+    order = reranker.rerank("hostel curfew", CANDIDATES, k=2)
+    assert order == [(0, 0.9), (1, 0.8)]
+
+
+def test_unadopted_weights_need_the_explicit_eval_switch(tmp_path):
+    """The gate holds even with a perfectly good unreleased model on disk."""
+    settings = settings_with(tmp_path, kind="learned", payload=model(adopted=False))
+    forced = dataclasses.replace(settings, rerank_allow_unadopted=True)
+    assert isinstance(build_reranker(IDF, settings=settings), Reranker)
+    assert isinstance(build_reranker(IDF, settings=forced), LearnedReranker)
 
 
 def test_features_are_bounded_and_ordered_by_the_learned_score():

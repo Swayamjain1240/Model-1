@@ -16,7 +16,7 @@ cached on disk so warm runs need no network.
 - **sentence-transformers / a cross-encoder.** Rejected: torch is a ~2 GB dependency for a
   corpus of 34 chunks, and the clean-clone proof would have to fetch it.
 - **Keeping hashed TF-IDF and tuning theta.** Rejected: it optimises the ruler. The measured
-  dense recall@10 went 0.75 → 1.00 and the answer rate 0.08 → 0.96 with no gate trickery.
+  dense recall@10 went 0.75 → 1.00 and the answer rate 0.29 → 0.96 with no gate trickery.
 
 ## Consequences
 Recall improves and the gate becomes usable, but the encoder is not fine-tuned on this domain,

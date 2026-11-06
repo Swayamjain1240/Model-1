@@ -103,7 +103,7 @@ class LearnedReranker:
                 chunk_tokens, chunk_bigrams, title_tokens, section_tokens = cached
             else:
                 chunk_tokens = set(tokenize(text))
-                chunk_bigrams = set(bigrams(list(chunk_tokens)))
+                chunk_bigrams = set(bigrams(tokenize(text)))
                 title_tokens, section_tokens = set(tokenize(title)), set(tokenize(section))
             rows[row] = (
                 max(0.0, cosine.get(idx, 0.0)),
@@ -126,7 +126,7 @@ def _coverage(
 ) -> float:
     """idf-weighted share of the query's terms (and phrases) present in the chunk."""
     total = found = 0.0
-    for term in query_set:
+    for term in sorted(query_set):
         weight = idf.get(term, 1.0)
         total += weight
         found += weight if term in chunk_tokens else 0.0
@@ -146,18 +146,47 @@ def load_model(path: str | Path) -> dict[str, Any] | None:
     return json.loads(file.read_text(encoding="utf-8"))
 
 
+class NullReranker:
+    """Fusion order, untouched: the control arm of the ablation.
+
+    Without it, "what did reranking buy?" can only be answered by comparing against a
+    different retrieval mode, which confounds the two changes. `rerank_kind="none"`
+    selects this, so the ablation can hold fusion fixed and vary only the ranker.
+    """
+
+    name = "none"
+
+    def attach_features(self, features: dict[int, tuple]) -> None:
+        """Accepted and ignored, so the tenant view can wire every ranker the same way."""
+        self._features = features
+
+    def rerank(
+        self,
+        query: str,
+        candidates: list[tuple[int, float, str, str, str]],
+        *,
+        k: int,
+        context: dict | None = None,
+    ) -> list[tuple[int, float]]:
+        return [(idx, fuse_score) for idx, fuse_score, *_rest in candidates[:k]]
+
+
 def build_reranker(
     idf: dict[str, float], *, settings: Settings = SETTINGS
-) -> Reranker | LearnedReranker:
+) -> Reranker | LearnedReranker | NullReranker:
     """`learned` only when weights exist AND the training report marks them adopted.
 
     The second condition is the point: a model that lost on held-out documents is kept
     in the repo as evidence, and this check makes it inert instead of one careless
     config edit away from production.
     """
+    if settings.rerank_kind == "none":
+        return NullReranker()
     if settings.rerank_kind != "learned":
         return Reranker(idf, settings=settings)
     model = load_model(settings.rerank_model_path)
-    if model is None or not model.get("adopted", False):
+    # allow_unadopted exists for the ablation only: it scores the rejected weights
+    # without flipping the production switch, which stays "adopted": true or nothing.
+    if model is None or not (settings.rerank_allow_unadopted or model.get("adopted", False)):
         return Reranker(idf, settings=settings)
     return LearnedReranker(model, idf=idf, settings=settings)

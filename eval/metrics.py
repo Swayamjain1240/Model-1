@@ -68,6 +68,31 @@ def mean(values: list[float]) -> float:
     return sum(values) / len(values) if values else 0.0
 
 
+def wilson_interval(successes: float, n: int, z: float = 1.96) -> tuple[float, float]:
+    """95% Wilson score interval for a proportion, in closed form.
+
+    Used instead of the normal approximation because several of these rates sit near 1.0
+    (recall 0.9583, refusal 1.0), where the normal interval leaks past 1 and misleads.
+    `successes` is a float so a metric like recall (a mean of 0/1 hits) can be treated as
+    a proportion of n questions - which is what it is.
+    """
+    if n <= 0:
+        return (0.0, 1.0)
+    p = min(max(successes / n, 0.0), 1.0)
+    denominator = 1.0 + z * z / n
+    centre = (p + z * z / (2 * n)) / denominator
+    margin = (z / denominator) * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+    return (max(0.0, centre - margin), min(1.0, centre + margin))
+
+
+def rate_with_ci(values: list[float], z: float = 1.96) -> dict[str, float]:
+    """n, mean and the 95% interval for one metric across the frozen questions."""
+    n = len(values)
+    point = mean(values)
+    low, high = wilson_interval(point * n, n, z=z)
+    return {"n": n, "mean": round(point, 4), "ci_low": round(low, 4), "ci_high": round(high, 4)}
+
+
 def refusal_counts(
     answerable: list[float], unanswerable: list[float], theta: float
 ) -> dict[str, float]:

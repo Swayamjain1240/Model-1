@@ -38,10 +38,10 @@ repository is not reproducible, this receipt is the answer.
 | refusal gate θ = 0.13 calibration story | `results/calibration.md` |
 | fr-11 diagnosis: what hybrid loses, why | `results/fr11_diagnosis.md` |
 | in-process latency (hybrid 0.60 ms mean) | `results/latency.md` |
-| NFR-01 PASS: p95 37.2 ms at 10 users | `results/loadtest.md` |
+| NFR-01: burst PASS p95 43.25 ms at 10 users; sustained soak p95 58.40 ms (miss) | `results/bench.md`, `results/soak.md` |
 | robustness (gate, not retrieval, is the bottleneck) | `results/robustness.md` |
 | handover proof (this runbook, §1) | `results/handover.md` |
-| stage-2 encoder delta (dense 0.75 → 1.00, answer rate 0.08 → 0.96) | `results/embeddings.md` |
+| stage-2 encoder delta (dense 0.75 → 1.00, answer rate 0.29 → 0.96) | `results/embeddings.md` |
 | stage-2 reranker, held out by document (0.90, not adopted) | `results/rerank.md` |
 | safety suite: injections, tenant probes, log audit, degraded mode | `results/safety.md` |
 
@@ -61,7 +61,7 @@ repository is not reproducible, this receipt is the answer.
 ## 4. Stage-2 roadmap in one paragraph
 
 1. ~~replace the TF-IDF embedder with a real sentence model~~ **done (M7)**: dense
-   recall@10 0.75 → 1.00, gate answer rate 0.08 → 0.96 at refusal 1.00 with theta
+   recall@10 0.75 → 1.00, gate answer rate 0.29 → 0.96 at refusal 1.00 with theta
    re-calibrated to 0.31 for the new score scale (`results/embeddings.md`). The delta
    was reported against the frozen set and nothing was tuned to it;
 2. train the reranker on a document-held-out split — **attempted in M8 and not adopted**:

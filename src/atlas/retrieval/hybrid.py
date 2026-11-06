@@ -105,10 +105,14 @@ class _TenantView:
         # reranker stops re-tokenising candidate text on every search (load-test finding)
         features: dict[int, tuple] = {}
         for idx, chunk in enumerate(self._chunks):
-            tokens = set(tokenize(chunk.text))
+            ordered = tokenize(chunk.text)
+            tokens = set(ordered)
             features[idx] = (
                 tokens,
-                set(bigrams(list(tokens))),
+                # bigrams of a *set* depend on iteration order, which is hash-salted per
+                # process: that made rankings differ between identical runs (found by the
+                # M10 reproducibility check). Pairs come from the ordered tokens.
+                set(bigrams(ordered)),
                 set(tokenize(chunk.title)),
                 set(tokenize(chunk.section)),
             )

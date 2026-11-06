@@ -17,6 +17,9 @@ data/
 .env.*
 !.env.example
 
+# bench scratch output (the committed evidence is results/bench.md · soak.md)
+*.log
+
 # tooling and editor noise
 .freebuff/
 .pytest_cache/

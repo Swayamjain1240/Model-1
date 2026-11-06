@@ -57,7 +57,7 @@ class Reranker:
                 chunk_set, chunk_bigrams, *_ = self._chunk_features[idx]
             else:
                 chunk_set = set(tokenize(text))
-                chunk_bigrams = set(bigrams(list(chunk_set)))
+                chunk_bigrams = set(bigrams(tokenize(text)))
             coverage = self._coverage(query_tokens, query_bigrams, chunk_set, chunk_bigrams)
             bigram_overlap = _ratio(query_bigrams, chunk_bigrams)
             title_match = _ratio(title_set, set(tokenize(title)))
@@ -75,7 +75,7 @@ class Reranker:
         tokens = tokenize(query)
         chunk_tokens = set(tokenize(text))
         return self._coverage(
-            tokens, bigrams(tokens), chunk_tokens, set(bigrams(list(chunk_tokens)))
+            tokens, bigrams(tokens), chunk_tokens, set(bigrams(tokenize(text)))
         )
 
     def _coverage(
@@ -92,12 +92,14 @@ class Reranker:
         """
         weighed_total = 0.0
         weighed_found = 0.0
-        for term in set(query_tokens):
+        # sorted(): float addition is order-sensitive, so iterating a set here made the
+        # score differ in the last bits between processes and flipped near-ties.
+        for term in sorted(set(query_tokens)):
             term_idf = self._idf.get(term, 1.0)
             weighed_total += term_idf
             if term in chunk_set:
                 weighed_found += term_idf
-        for phrase in set(query_bigrams):
+        for phrase in sorted(set(query_bigrams)):
             phrase_idf = self._phrase_idf(phrase)
             weighed_total += phrase_idf
             if phrase in chunk_bigrams:

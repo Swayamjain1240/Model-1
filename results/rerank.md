@@ -1,6 +1,6 @@
 # Stage-2 reranker — trained on documents, judged on held-out documents (M8)
 
-Command: `python -m eval.rerank_train` · commit `7d47ace` · platform: Windows-11-10.0.26300-SP0
+Command: `python -m eval.rerank_train` · commit `87a5222` · platform: Windows-11-10.0.26300-SP0
 
 Split: 12 documents to train on, 6 held out (`backlog-and-attempts, course-withdrawal, grading-system, library-rules, placement-policy, supplementary-exams`). Questions with evidence in the held-out documents: **10** of 24; 14 train the weights, 0 span both sides and are excluded.
 
@@ -25,18 +25,18 @@ Split: 12 documents to train on, 6 held out (`backlog-and-attempts, course-withd
 
 | feature | pointwise | pairwise |
 |---|---|---|
-| cosine | +4.0367 | +1.4590 |
-| bm25 | +4.2444 | +2.2072 |
-| rrf | -2.3910 | +1.1972 |
-| coverage | +1.7273 | +0.8023 |
-| bigram | +0.0000 | +0.0000 |
-| title | +4.6371 | +0.9487 |
-| section | +1.1359 | +0.2463 |
-| length | -2.7331 | -0.6663 |
+| cosine | +4.0040 | +1.4554 |
+| bm25 | +4.2115 | +2.1984 |
+| rrf | -2.3612 | +1.1949 |
+| coverage | +1.6332 | +0.7959 |
+| bigram | +1.0453 | +0.2054 |
+| title | +4.6262 | +0.9473 |
+| section | +1.1426 | +0.2460 |
+| length | -2.7380 | -0.6683 |
 
 Decision: **not adopted**. no learned variant beat both the blend (0.9000) and the best single retriever (1.0000) on held-out documents; the MVP blend stays and FR-11 remains open.
 
-Cost: mean search 0.85 ms (blend) vs 1.00 ms (learned pairwise), warm views, one process.
+Cost: mean search 0.81 ms (blend) vs 0.71 ms (learned pairwise), warm views, one process.
 
 ## Interpretation
 

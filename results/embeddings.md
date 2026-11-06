@@ -1,6 +1,6 @@
 # Stage-2 embeddings — measured delta against the frozen baseline (M7)
 
-Command: `python -m eval.embeddings` · commit `bd0b262` · platform: Windows-11-10.0.26300-SP0
+Command: `python -m eval.embeddings` · commit `87a5222` · platform: Windows-11-10.0.26300-SP0
 Corpus: `corpus/campus (18 documents, frozen at M1)` · golden set unchanged: 24 answerable + 6 unanswerable (labels, doc ids and split are the M1 originals)
 
 ## Retrieval, same ruler (mean over the 24 answerable queries)
@@ -9,16 +9,16 @@ Corpus: `corpus/campus (18 documents, frozen at M1)` · golden set unchanged: 24
 |---|---|---|---|---|---|
 | hashed TF-IDF (MVP) · sparse | 1024 | 0.9583 | 0.8750 | 0.8216 | 0.7876 |
 | hashed TF-IDF (MVP) · dense | 1024 | 0.7500 | 0.5208 | 0.4709 | 0.4016 |
-| hashed TF-IDF (MVP) · hybrid | 1024 | 0.8750 | 0.7917 | 0.7063 | 0.6524 |
+| hashed TF-IDF (MVP) · hybrid | 1024 | 0.8750 | 0.7917 | 0.7271 | 0.6802 |
 | potion-base-8M (stage 2) · sparse | 256 | 0.9583 | 0.8750 | 0.8216 | 0.7876 |
 | potion-base-8M (stage 2) · dense | 256 | 1.0000 | 0.9167 | 0.8779 | 0.8451 |
-| potion-base-8M (stage 2) · hybrid | 256 | 0.9167 | 0.9167 | 0.8534 | 0.8368 |
+| potion-base-8M (stage 2) · hybrid | 256 | 0.9167 | 0.9167 | 0.8494 | 0.8229 |
 
 ## The refusal gate, re-calibrated per score scale
 
 | encoder | theta shipped | answer rate @shipped | refusal @shipped | theta by rule | answer rate @rule | refusal @rule | margin @rule |
 |---|---|---|---|---|---|---|---|
-| hashed | 0.13 | 0.0833 | 1.0000 | 0.20 | 0.0000 | 1.0000 | +0.0774 |
+| hashed | 0.13 | 0.2917 | 0.6667 | 0.20 | 0.0833 | 1.0000 | +0.0292 |
 | trained | 0.31 | 0.9583 | 1.0000 | 0.31 | 0.9583 | 1.0000 | +0.0106 |
 
 Theta is not shared between encoders: confidence is `0.65·cosine + 0.35·coverage`, and a trained encoder's cosines sit on a different scale, so re-using 0.13 would have refused almost everything while looking like a retrieval failure.
@@ -79,14 +79,14 @@ Queries whose hybrid recall changed: 3/24.
 
 | encoder | cold view build (ms) | diagnostics mean (ms) | diagnostics p95 (ms) | vectors (MB) |
 |---|---|---|---|---|
-| hashed | 48.54 | 1.51 | 2.75 | 0.139 |
-| trained | 39.49 | 1.18 | 2.05 | 0.035 |
+| hashed | 48.84 | 1.76 | 3.12 | 0.139 |
+| trained | 40.28 | 1.56 | 3.53 | 0.035 |
 
 ## Interpretation
 
 - Dense recall@10 moved 0.7500 -> 1.0000 (+0.2500) with every label,
   metric and query untouched: the ruler did not move, the encoder did.
-- Answer rate at the gate moved 0.08 -> 0.96 (+0.88) with refusal accuracy 1.00 on the 6 unanswerable queries. This is the
+- Answer rate at the gate moved 0.29 -> 0.96 (+0.67) with refusal accuracy 1.00 on the 6 unanswerable queries. This is the
   limitation M4 recorded honestly (answer rate 0.08) closing for a measured reason:
   confidence = 0.65*cosine + 0.35*coverage, and hashed cosine for a paraphrase is ~0,
   so the gate could not tell 'reworded but present' from 'absent'.

@@ -48,8 +48,12 @@ class Settings:
     # M8: "learned" loads committed weights trained on a document-held-out split, but the
     # loader only honours a file marked "adopted": true, so an experiment cannot ship by
     # accident. "blend" is the MVP hand weighting and the fallback in every other case.
-    rerank_kind: str = "learned"
+    rerank_kind: str = "learned"  # "none" keeps fusion order: the ablation's control arm
     rerank_model_path: str = "models/rerank-v1.json"
+    # eval-only switch, set by eval/ablation.py to score the *unadopted* weights in place.
+    # Production stays false, so the adoption gate in build_reranker is never bypassed by
+    # a config edit; the ablation has to ask for it by name.
+    rerank_allow_unadopted: bool = False
 
     # candidate pools (ATL-TDD-001 s.1)
     sparse_candidates: int = 50

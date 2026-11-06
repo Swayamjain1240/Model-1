@@ -1,0 +1,369 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "87a5222",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "method": "Five configurations, one change at a time, on the frozen set (FR-11).\n\nThe M3 report compared three retrieval modes and swept the fusion constant; that answers\n\"which mode wins\" but not \"what did each layer buy\", because the layers were never varied\nindependently. This harness holds everything else fixed and moves one thing per row:\n\n    sparse            BM25 only\n    dense             the configured encoder only\n    hybrid            fusion, no reranker          <- the control arm\n    hybrid + blend    fusion + the hand weights shipped since M2\n    hybrid + learned  fusion + the trained weights, scored in place (unadopted)\n\nThe last row is the reason `rerank_allow_unadopted` exists: the production loader refuses\nthose weights, and the ablation has to ask for them by name to measure what they would have\ndone. Nothing here can flip the shipped default.\n\nEvery rate carries n and a 95% Wilson interval, because 24 questions is a small sample and a\npoint estimate without its interval invites over-reading.\n\nWrites `results/ablation.md` and `results/ablation.json`.",
+  "control": "hybrid",
+  "configs": {
+    "hashed stand-in (default, offline)": {
+      "sparse": {
+        "mode": "sparse",
+        "overrides": {
+          "rerank_kind": "none",
+          "embedder_kind": "hashed-tfidf-d1024"
+        },
+        "recall": {
+          "n": 24,
+          "mean": 0.9583,
+          "ci_low": 0.7976,
+          "ci_high": 0.9926
+        },
+        "precision5c": {
+          "n": 24,
+          "mean": 0.875,
+          "ci_low": 0.69,
+          "ci_high": 0.9566
+        },
+        "ndcg": {
+          "n": 24,
+          "mean": 0.8216,
+          "ci_low": 0.6282,
+          "ci_high": 0.9262
+        },
+        "mrr": {
+          "n": 24,
+          "mean": 0.7876,
+          "ci_low": 0.5909,
+          "ci_high": 0.905
+        },
+        "missed_questions": [
+          "a009"
+        ]
+      },
+      "dense": {
+        "mode": "dense",
+        "overrides": {
+          "rerank_kind": "none",
+          "embedder_kind": "hashed-tfidf-d1024"
+        },
+        "recall": {
+          "n": 24,
+          "mean": 0.75,
+          "ci_low": 0.551,
+          "ci_high": 0.88
+        },
+        "precision5c": {
+          "n": 24,
+          "mean": 0.5208,
+          "ci_low": 0.3324,
+          "ci_high": 0.7035
+        },
+        "ndcg": {
+          "n": 24,
+          "mean": 0.4709,
+          "ci_low": 0.2895,
+          "ci_high": 0.6604
+        },
+        "mrr": {
+          "n": 24,
+          "mean": 0.4016,
+          "ci_low": 0.2326,
+          "ci_high": 0.5978
+        },
+        "missed_questions": [
+          "a001",
+          "a002",
+          "a010",
+          "a012",
+          "a021",
+          "a024"
+        ]
+      },
+      "hybrid": {
+        "mode": "hybrid",
+        "overrides": {
+          "rerank_kind": "none",
+          "embedder_kind": "hashed-tfidf-d1024"
+        },
+        "recall": {
+          "n": 24,
+          "mean": 0.8333,
+          "ci_low": 0.6415,
+          "ci_high": 0.9332
+        },
+        "precision5c": {
+          "n": 24,
+          "mean": 0.8333,
+          "ci_low": 0.6415,
+          "ci_high": 0.9332
+        },
+        "ndcg": {
+          "n": 24,
+          "mean": 0.6553,
+          "ci_low": 0.4561,
+          "ci_high": 0.8117
+        },
+        "mrr": {
+          "n": 24,
+          "mean": 0.5965,
+          "ci_low": 0.4005,
+          "ci_high": 0.7659
+        },
+        "missed_questions": [
+          "a001",
+          "a009",
+          "a021",
+          "a024"
+        ]
+      },
+      "hybrid + blend": {
+        "mode": "hybrid",
+        "overrides": {
+          "rerank_kind": "blend",
+          "embedder_kind": "hashed-tfidf-d1024"
+        },
+        "recall": {
+          "n": 24,
+          "mean": 0.875,
+          "ci_low": 0.69,
+          "ci_high": 0.9566
+        },
+        "precision5c": {
+          "n": 24,
+          "mean": 0.7917,
+          "ci_low": 0.5953,
+          "ci_high": 0.9076
+        },
+        "ndcg": {
+          "n": 24,
+          "mean": 0.7271,
+          "ci_low": 0.5274,
+          "ci_high": 0.8642
+        },
+        "mrr": {
+          "n": 24,
+          "mean": 0.6802,
+          "ci_low": 0.4803,
+          "ci_high": 0.8304
+        },
+        "missed_questions": [
+          "a001",
+          "a021",
+          "a024"
+        ]
+      },
+      "hybrid + learned": {
+        "mode": "hybrid",
+        "overrides": {
+          "rerank_kind": "learned",
+          "rerank_allow_unadopted": true,
+          "embedder_kind": "hashed-tfidf-d1024"
+        },
+        "recall": {
+          "n": 24,
+          "mean": 0.9167,
+          "ci_low": 0.7415,
+          "ci_high": 0.9768
+        },
+        "precision5c": {
+          "n": 24,
+          "mean": 0.875,
+          "ci_low": 0.69,
+          "ci_high": 0.9566
+        },
+        "ndcg": {
+          "n": 24,
+          "mean": 0.8084,
+          "ci_low": 0.6136,
+          "ci_high": 0.9181
+        },
+        "mrr": {
+          "n": 24,
+          "mean": 0.7782,
+          "ci_low": 0.5808,
+          "ci_high": 0.8988
+        },
+        "missed_questions": [
+          "a009",
+          "a021"
+        ]
+      }
+    },
+    "trained encoder (potion-base-8M)": {
+      "sparse": {
+        "mode": "sparse",
+        "overrides": {
+          "rerank_kind": "none",
+          "embedder_kind": "potion-base-8M"
+        },
+        "recall": {
+          "n": 24,
+          "mean": 0.9583,
+          "ci_low": 0.7976,
+          "ci_high": 0.9926
+        },
+        "precision5c": {
+          "n": 24,
+          "mean": 0.875,
+          "ci_low": 0.69,
+          "ci_high": 0.9566
+        },
+        "ndcg": {
+          "n": 24,
+          "mean": 0.8216,
+          "ci_low": 0.6282,
+          "ci_high": 0.9262
+        },
+        "mrr": {
+          "n": 24,
+          "mean": 0.7876,
+          "ci_low": 0.5909,
+          "ci_high": 0.905
+        },
+        "missed_questions": [
+          "a009"
+        ]
+      },
+      "dense": {
+        "mode": "dense",
+        "overrides": {
+          "rerank_kind": "none",
+          "embedder_kind": "potion-base-8M"
+        },
+        "recall": {
+          "n": 24,
+          "mean": 1.0,
+          "ci_low": 0.862,
+          "ci_high": 1.0
+        },
+        "precision5c": {
+          "n": 24,
+          "mean": 0.9167,
+          "ci_low": 0.7415,
+          "ci_high": 0.9768
+        },
+        "ndcg": {
+          "n": 24,
+          "mean": 0.8779,
+          "ci_low": 0.6934,
+          "ci_high": 0.9581
+        },
+        "mrr": {
+          "n": 24,
+          "mean": 0.8451,
+          "ci_low": 0.6549,
+          "ci_high": 0.9401
+        },
+        "missed_questions": []
+      },
+      "hybrid": {
+        "mode": "hybrid",
+        "overrides": {
+          "rerank_kind": "none",
+          "embedder_kind": "potion-base-8M"
+        },
+        "recall": {
+          "n": 24,
+          "mean": 0.9583,
+          "ci_low": 0.7976,
+          "ci_high": 0.9926
+        },
+        "precision5c": {
+          "n": 24,
+          "mean": 0.9167,
+          "ci_low": 0.7415,
+          "ci_high": 0.9768
+        },
+        "ndcg": {
+          "n": 24,
+          "mean": 0.8868,
+          "ci_low": 0.7042,
+          "ci_high": 0.9626
+        },
+        "mrr": {
+          "n": 24,
+          "mean": 0.8692,
+          "ci_low": 0.6831,
+          "ci_high": 0.9535
+        },
+        "missed_questions": [
+          "a009"
+        ]
+      },
+      "hybrid + blend": {
+        "mode": "hybrid",
+        "overrides": {
+          "rerank_kind": "blend",
+          "embedder_kind": "potion-base-8M"
+        },
+        "recall": {
+          "n": 24,
+          "mean": 0.9167,
+          "ci_low": 0.7415,
+          "ci_high": 0.9768
+        },
+        "precision5c": {
+          "n": 24,
+          "mean": 0.9167,
+          "ci_low": 0.7415,
+          "ci_high": 0.9768
+        },
+        "ndcg": {
+          "n": 24,
+          "mean": 0.8494,
+          "ci_low": 0.6599,
+          "ci_high": 0.9425
+        },
+        "mrr": {
+          "n": 24,
+          "mean": 0.8229,
+          "ci_low": 0.6297,
+          "ci_high": 0.927
+        },
+        "missed_questions": [
+          "a009",
+          "a021"
+        ]
+      },
+      "hybrid + learned": {
+        "mode": "hybrid",
+        "overrides": {
+          "rerank_kind": "learned",
+          "rerank_allow_unadopted": true,
+          "embedder_kind": "potion-base-8M"
+        },
+        "recall": {
+          "n": 24,
+          "mean": 0.9583,
+          "ci_low": 0.7976,
+          "ci_high": 0.9926
+        },
+        "precision5c": {
+          "n": 24,
+          "mean": 0.9167,
+          "ci_low": 0.7415,
+          "ci_high": 0.9768
+        },
+        "ndcg": {
+          "n": 24,
+          "mean": 0.8566,
+          "ci_low": 0.6682,
+          "ci_high": 0.9466
+        },
+        "mrr": {
+          "n": 24,
+          "mean": 0.8281,
+          "ci_low": 0.6356,
+          "ci_high": 0.9301
+        },
+        "missed_questions": [
+          "a009"
+        ]
+      }
+    }
+  }
+}

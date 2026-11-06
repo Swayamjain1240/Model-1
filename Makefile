@@ -7,7 +7,7 @@ VENV_PY ?= $(PY)
 # on a Windows checkout the venv interpreter is .venv/Scripts/python.exe;
 # on Unix .venv/bin/python - set VENV_PY accordingly when using venv targets.
 
-.PHONY: corpus limits test eval embed safety bench soak dashboard trace gate-demo check ci setup ingest serve handover
+.PHONY: corpus limits test eval embed ablation safety bench soak dashboard trace gate-demo check ci setup ingest serve handover
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -24,6 +24,10 @@ eval:
 # stage-2 layer 1 (M7): the measured delta of a real encoder vs the hashed stand-in
 embed:
 	$(PY) -m eval.embeddings
+
+# M10: five configurations x two encoders, with control arm and confidence intervals
+ablation:
+	$(PY) -m eval.ablation
 
 # stage-2 layer 2 (M9): injection suite, tenant probes, log audit, degraded mode
 safety:

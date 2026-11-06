@@ -1,14 +1,14 @@
 # Handover proof (M6, FR-28): clean clone -> same commands -> same numbers
 
-HEAD `17166961594a` · generator `scripts/repro_clone.py`
+HEAD `efb84bf7067d` · generator `scripts/repro_clone.py`
 
 | step | exit | seconds | tail |
 |---|---|---|---|
-| archive HEAD (tracked files only, like a fresh clone) | 0 | 0.12 | ok |
-| unpack into clean-clone/ | 0 | 0.11 | ok |
-| setup: fresh virtualenv from the host interpreter | 0 | 10.94 | ok |
-| setup: pip install -e . (numpy only, per NFR-20 budget) | 0 | 25.44 | ok |
-| ingest: 18 policy documents | 0 | 1.85 | ingested 34 new chunks from 18 files into tenant 'campus' |
+| archive HEAD (tracked files only, like a fresh clone) | 0 | 1.64 | ok |
+| unpack into clean-clone/ | 0 | 0.17 | ok |
+| setup: fresh virtualenv from the host interpreter | 0 | 14.68 | ok |
+| setup: pip install -e . (numpy only, per NFR-20 budget) | 0 | 175.06 | ok |
+| ingest: 18 policy documents | 0 | 2.18 | ingested 34 new chunks from 18 files into tenant 'campus' |
 | eval gate in the clean clone | 0 | 0.74 | gate: refusal accuracy 1.0000 (minimum 0.9) / gate ok |
 | serve smoke: /v1/healthz + one /v1/ask | 0 | - | ok |
 
