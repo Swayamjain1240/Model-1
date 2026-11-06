@@ -57,9 +57,13 @@ repository is not reproducible, this receipt is the answer.
 
 ## 4. Stage-2 roadmap in one paragraph
 
-1. replace the TF-IDF embedder with a real sentence model (recall delta reported
-   against the frozen golden set, never tuned to it);
-2. train the reranker on the golden set with a held-out split;
+1. ~~replace the TF-IDF embedder with a real sentence model~~ **done (M7)**: dense
+   recall@10 0.75 → 1.00, gate answer rate 0.08 → 0.96 at refusal 1.00 with theta
+   re-calibrated to 0.31 for the new score scale (`results/embeddings.md`). The delta
+   was reported against the frozen set and nothing was tuned to it;
+2. train the reranker on a document-held-out split — **now the open bottleneck**, because
+   M7's ablation showed fusion weights change nothing while the hand-tuned rerank blend
+   holds hybrid at 0.92 against dense-only 1.00 (FR-11);
 3. generative synthesis behind a source-verification gate, one paragraph max,
    refusal preserved end-to-end;
 4. the M6 answer-rate and θ story re-measured and re-reported against the

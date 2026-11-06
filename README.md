@@ -1,13 +1,19 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
-**Status: implementation started.** M1–M5 are complete: corpus, hand-labeled question set, the
-index layer (ingest, chunking, store, hybrid retrieval), the first **measured baseline** on the
-frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75, ablations in `results/`), the
-**answer path** (extractive cited answers, calibrated safety-first refusal gate, theta 0.13,
-`results/calibration.md`), and the **HTTP API**: `GET /v1/ask` with token auth, machine-readable
-errors, four stage timings per response, one-page demo at `/`, and the NFR-01 load test
-**PASS** (p95 = 37.2 ms <= 50 ms at 10 concurrent users, `results/loadtest.md`).
-Handover is next (M6).
+**Status: MVP complete, stage 2 started.** M1–M6 built the measured MVP: corpus, hand-labeled
+question set, index layer (ingest, chunking, store, hybrid retrieval), the first **measured
+baseline** on the frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75), the **answer
+path** (extractive cited answers, safety-first refusal gate), the **HTTP API** (`GET /v1/ask`,
+token auth, machine-readable errors, four stage timings, one-page demo at `/`, NFR-01 load test
+**PASS** p95 = 37.2 ms at 10 users), and the **handover proof** (clean-clone reproduction,
+`results/handover.md`).
+
+M7 replaced the hashed stand-in with a **real pretrained encoder** (`potion-base-8M`, 256-d,
+CPU-only) and re-measured the same frozen set: **dense recall@10 0.75 → 1.00**, and the gate's
+honest **answer rate 0.08 → 0.96** at refusal accuracy 1.00 with theta re-calibrated per score
+scale (0.31, `results/embeddings.md`). The remaining open requirement is **FR-11**: with a strong
+dense side, hybrid 0.92 still trails dense alone 1.00, and the ablation shows the hand-tuned
+rerank blend — not fusion — is what demotes correct chunks. That is the next layer's job.
 
 ---
 
@@ -107,14 +113,17 @@ src/atlas/
 ├── text/{tokenize,chunk}.py         deterministic tokens · structure-aware chunking
 ├── store.py                         SQLite; idempotent, tenant-scoped
 ├── retrieval/{sparse,dense,fuse,rerank,hybrid}.py    BM25 · hashed TF-IDF · RRF · blend
+├── retrieval/{embedder,trained}.py  encoder seam · pretrained static encoder + disk cache
 ├── answer.py                        gate → extract → cite, or refuse (M4)
 ├── server.py                        /v1/ask JSON API, stdlib only (M5)
 └── cli.py                           ingest · ask · stats · serve
 tests/                                unit, contract and integration (pytest)
 web/demo.html                         the one-page demo served at /
 bench/load_test.py                    NFR-01 concurrent load test
+eval/embeddings.py                    stage-2 encoder delta harness (M7)
 results/                              committed evidence: eval_report, calibration,
-                                      fr11_diagnosis, latency, loadtest, robustness
+                                      fr11_diagnosis, latency, loadtest, robustness,
+                                      embeddings, handover
 docs/
 ├── … 12 design documents (01–12) …
 ├── 13-handover-runbook.md           how to run, prove, and extend (M6)
@@ -159,7 +168,8 @@ wrong-token requests get `401 AUTH_REQUIRED`; empty/stopword-only queries get
 
 **After the MVP** — each layer reported as a delta against that baseline:
 
-- real embedding model + trained reranker (retrieval quality)
+- ~~real embedding model~~ **done (M7):** dense recall@10 0.75 → 1.00, answer rate 0.08 → 0.96
+  (`results/embeddings.md`) — and trained reranker (retrieval quality), still open (FR-11)
 - LLM generation + claim-level grounding verifier (faithfulness, cost)
 - explicit workflow states: route → rewrite → retrieve → rerank → verify → answer/refuse/escalate
 - safety: tenant isolation in the data layer, roles, PII masking, injection suite
@@ -201,6 +211,12 @@ the calibrated answer path (M4), the HTTP API with its load test (M5) and the ha
 `python scripts/repro_clone.py` materialises a clean HEAD clone in a fresh venv, re-ingests,
 re-evaluates and demos the live API, then compares against the committed baseline —
 latest receipt: recall@10 0.8750 = 0.8750, refusal accuracy 1.0000 = 1.0000, **PASS**
-(`results/handover.md`). The runbook (`docs/13-handover-runbook.md`) states the limitations
-openly: single node, single process, not deployed, answer rate limited by the calibrated gate
-until stage-2 embeddings.
+(`results/handover.md`).
+
+Stage 2 has started: M7 swaps the encoder behind the existing seam — one config value — and
+reports the delta instead of asserting it (`results/embeddings.md`, regenerate with
+`python -m eval.embeddings`). Selecting it is deliberate, because the hashed stand-in is what
+keeps the default offline (C-3, NFR-17): `ATLAS_EMBEDDER=potion-base-8M python -m atlas.cli ask …`,
+and every embedded text is cached on disk so a warm run needs no network. The runbook
+(`docs/13-handover-runbook.md`) states the limitations openly: single node, single process, not
+deployed, FR-11 still unmet, and a 0.011 gate margin measured on six unanswerable questions.
