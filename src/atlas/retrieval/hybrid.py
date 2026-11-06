@@ -13,7 +13,7 @@ from ..config import SETTINGS, Settings
 from ..interfaces import InputError, Passage
 from ..store import Store, StoredChunk
 from ..text.tokenize import bigrams, tokenize
-from .dense import HashedTFIDFEmbedder
+from .embedder import build_embedder
 from .fuse import rrf
 from .rerank import Reranker
 from .sparse import BM25Index
@@ -87,7 +87,7 @@ class _TenantView:
         self._chunks = list(chunks)
         self._index_of = {chunk.chunk_id: idx for idx, chunk in enumerate(self._chunks)}
         self._sparse = BM25Index(texts, settings=settings)
-        self._embedder = HashedTFIDFEmbedder(self._sparse.idf, settings=settings)
+        self._embedder = build_embedder(settings.embedder_kind, self._sparse.idf, settings=settings)
         self._matrix = self._embedder.embed(texts)
         self._reranker = Reranker(self._sparse.idf, settings=settings)
         # M5 perf: chunk features are immutable per view, so cache them once and the
@@ -107,7 +107,9 @@ class _TenantView:
         sparse_pool = self._sparse.search(tokenize(query), k=s.sparse_candidates)
         dense_pool = self._dense_search(query, k=s.dense_candidates)
         lists = [[idx for idx, _ in sparse_pool], [idx for idx, _ in dense_pool]]
-        fused = rrf(lists, k=s.rrf_k)
+        fused = rrf(
+            lists, k=s.rrf_k, weights=(s.rrf_weight_sparse, s.rrf_weight_dense)
+        )
         fused_top = sorted(fused.items(), key=lambda item: (-item[1], item[0]))
         fused_top = fused_top[: s.fused_candidates]
         candidates = [

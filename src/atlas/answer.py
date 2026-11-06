@@ -42,7 +42,8 @@ def answer_query(
     if report is not None:
         passage, parts = report
         confidence = round(parts["confidence"], 4)
-        gate_passes = confidence >= settings.confidence_theta
+        # theta follows the embedder's score scale (settings.theta), never a global
+        gate_passes = confidence >= settings.theta
     else:
         passage, confidence, gate_passes = None, 0.0, False
     gate_ms = (time.perf_counter() - gate_start) * 1000.0

@@ -117,7 +117,7 @@ def aggregate(rows: list[dict]) -> dict:
 def theta_sweep(confidence_a: list[float], confidence_u: list[float]) -> list[dict]:
     """Gate outcomes at every candidate threshold, hybrid mode, TDD §7 table shape."""
     table = []
-    for theta in SETTINGS.theta_candidates:
+    for theta in SETTINGS.theta_grid:
         outcome = metrics.refusal_counts(confidence_a, confidence_u, theta)
         table.append({"theta": theta, **outcome})
     return table

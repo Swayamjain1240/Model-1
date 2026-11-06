@@ -85,7 +85,7 @@ def _ask(args: argparse.Namespace) -> int:
         store.close()
     if answer.refused:
         print("REFUSED - no grounded answer; citations withheld "
-              f"(confidence={answer.confidence:.2f}, theta={SETTINGS.confidence_theta:.2f})")
+              f"(confidence={answer.confidence:.2f}, theta={SETTINGS.theta:.2f})")
         return 0
     print(answer.text)
     for citation in answer.citations:
