@@ -15,6 +15,17 @@ scale (0.31, `results/embeddings.md`). The remaining open requirement is **FR-11
 dense side, hybrid 0.92 still trails dense alone 1.00, and the ablation shows the hand-tuned
 rerank blend — not fusion — is what demotes correct chunks. That is the next layer's job.
 
+M8 answered that with a **trained reranker**: weights fitted on 12 documents and judged on the
+6 never seen. Pointwise and pairwise fits both scored **0.90 held-out against dense-only 1.00**,
+so nothing was adopted — the weights file is committed and marked unadopted, and the loader
+refuses to use it. FR-11 stays open with its evidence (`results/rerank.md`) instead of a claim.
+
+M9 added the safety layer and measured it through the live server: **40/40 injection attacks
+refused** (98% by the guard alone, the rest by the gate), **0 cross-tenant leaks** across 12
+probes against a tenant holding a byte-identical copy of a campus document, **0 raw personal
+values** in 133 captured log lines, and **3/3 degraded answers** with generation failing on
+purpose (`results/safety.md`).
+
 ---
 
 ## The problem
@@ -114,6 +125,8 @@ src/atlas/
 ├── store.py                         SQLite; idempotent, tenant-scoped
 ├── retrieval/{sparse,dense,fuse,rerank,hybrid}.py    BM25 · hashed TF-IDF · RRF · blend
 ├── retrieval/{embedder,trained}.py  encoder seam · pretrained static encoder + disk cache
+├── retrieval/learned.py             trained reranker + adoption gate (M8)
+├── guard.py · breaker.py · obs.py   input guard · circuit breaker · log redaction (M9)
 ├── answer.py                        gate → extract → cite, or refuse (M4)
 ├── server.py                        /v1/ask JSON API, stdlib only (M5)
 └── cli.py                           ingest · ask · stats · serve
@@ -121,6 +134,8 @@ tests/                                unit, contract and integration (pytest)
 web/demo.html                         the one-page demo served at /
 bench/load_test.py                    NFR-01 concurrent load test
 eval/embeddings.py                    stage-2 encoder delta harness (M7)
+eval/rerank_train.py                  document-held-out reranker training (M8)
+eval/safety.py                        injection, tenancy, log and degraded suite (M9)
 results/                              committed evidence: eval_report, calibration,
                                       fr11_diagnosis, latency, loadtest, robustness,
                                       embeddings, handover

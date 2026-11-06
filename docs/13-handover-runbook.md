@@ -41,6 +41,9 @@ repository is not reproducible, this receipt is the answer.
 | NFR-01 PASS: p95 37.2 ms at 10 users | `results/loadtest.md` |
 | robustness (gate, not retrieval, is the bottleneck) | `results/robustness.md` |
 | handover proof (this runbook, §1) | `results/handover.md` |
+| stage-2 encoder delta (dense 0.75 → 1.00, answer rate 0.08 → 0.96) | `results/embeddings.md` |
+| stage-2 reranker, held out by document (0.90, not adopted) | `results/rerank.md` |
+| safety suite: injections, tenant probes, log audit, degraded mode | `results/safety.md` |
 
 ## 3. Known limitations (state them, do not hide them)
 
@@ -61,9 +64,11 @@ repository is not reproducible, this receipt is the answer.
    recall@10 0.75 → 1.00, gate answer rate 0.08 → 0.96 at refusal 1.00 with theta
    re-calibrated to 0.31 for the new score scale (`results/embeddings.md`). The delta
    was reported against the frozen set and nothing was tuned to it;
-2. train the reranker on a document-held-out split — **now the open bottleneck**, because
-   M7's ablation showed fusion weights change nothing while the hand-tuned rerank blend
-   holds hybrid at 0.92 against dense-only 1.00 (FR-11);
+2. train the reranker on a document-held-out split — **attempted in M8 and not adopted**:
+   pointwise and pairwise fits both reached 0.90 on the ten held-out questions against
+   dense-only 1.00, so the blend still ships and FR-11 stays open (`results/rerank.md`).
+   The next honest attempt needs a larger labelled set, not more feature engineering on
+   twenty-four questions;
 3. generative synthesis behind a source-verification gate, one paragraph max,
    refusal preserved end-to-end;
 4. the M6 answer-rate and θ story re-measured and re-reported against the
