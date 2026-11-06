@@ -23,16 +23,21 @@ class Reranker:
         # was one of the M5 findings (load test showed it dominating p95).
         self._chunk_features: dict[int, tuple[set[str], set[str]]] | None = None
 
-    def attach_features(self, features: dict[int, tuple[set[str], set[str]]]) -> None:
-        """Cache per-chunk token/bigram sets keyed by candidate index (M5 perf)."""
+    def attach_features(self, features: dict[int, tuple]) -> None:
+        """Cache per-chunk token sets keyed by candidate index (M5 perf).
+
+        The tuple is (text tokens, text bigrams, title tokens, section tokens); the
+        reranker reads the first two and ignores the rest, which the learned ranker uses.
+        """
         self._chunk_features = features
 
     def rerank(
         self,
         query: str,
-        candidates: list[tuple[int, float, str, str]],
+        candidates: list[tuple[int, float, str, str, str]],
         *,
         k: int,
+        context: dict | None = None,
     ) -> list[tuple[int, float]]:
         """Candidates are (idx, fuse_score, chunk_text, title); out is top-k (idx, score).
 
@@ -44,12 +49,12 @@ class Reranker:
         query_tokens = tokenize(query)
         query_bigrams = bigrams(query_tokens)
         title_set = set(query_tokens)
-        max_fuse = max((fuse for _, fuse, _, _ in candidates), default=0.0)
+        max_fuse = max((candidate[1] for candidate in candidates), default=0.0)
         scored: list[tuple[int, float]] = []
-        for idx, fuse_score, text, title in candidates:
+        for idx, fuse_score, text, title, *_section in candidates:
             fuse_norm = (fuse_score / max_fuse) if max_fuse > 0.0 else 0.0
             if self._chunk_features is not None and idx in self._chunk_features:
-                chunk_set, chunk_bigrams = self._chunk_features[idx]
+                chunk_set, chunk_bigrams, *_ = self._chunk_features[idx]
             else:
                 chunk_set = set(tokenize(text))
                 chunk_bigrams = set(bigrams(list(chunk_set)))

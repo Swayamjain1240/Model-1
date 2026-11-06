@@ -15,7 +15,7 @@ from ..store import Store, StoredChunk
 from ..text.tokenize import bigrams, tokenize
 from .embedder import build_embedder
 from .fuse import rrf
-from .rerank import Reranker
+from .learned import build_reranker
 from .sparse import BM25Index
 
 MODES = ("sparse", "dense", "hybrid")
@@ -67,6 +67,17 @@ class HybridIndex:
         view = self._view(tenant_id)
         return passages[0], view.diagnose(query, passages[0])
 
+    def candidate_set(
+        self, query: str, *, tenant_id: str
+    ) -> tuple[list[tuple[int, float, str, str, str]], dict[str, dict[int, float]]]:
+        """Public access to the reranker's inputs, for training and diagnosis (M8)."""
+        view = self._view(tenant_id)
+        return view.candidate_set(query) if view is not None else ([], {})
+
+    def view(self, tenant_id: str) -> _TenantView | None:
+        """Read-only view access: the trainer needs chunk labels, not SQL."""
+        return self._view(tenant_id)
+
     def _view(self, tenant_id: str) -> _TenantView | None:
         view = self._views.get(tenant_id)
         if view is None:
@@ -89,13 +100,18 @@ class _TenantView:
         self._sparse = BM25Index(texts, settings=settings)
         self._embedder = build_embedder(settings.embedder_kind, self._sparse.idf, settings=settings)
         self._matrix = self._embedder.embed(texts)
-        self._reranker = Reranker(self._sparse.idf, settings=settings)
+        self._reranker = build_reranker(self._sparse.idf, settings=settings)
         # M5 perf: chunk features are immutable per view, so cache them once and the
         # reranker stops re-tokenising candidate text on every search (load-test finding)
-        features: dict[int, tuple[set, set]] = {}
+        features: dict[int, tuple] = {}
         for idx, chunk in enumerate(self._chunks):
             tokens = set(tokenize(chunk.text))
-            features[idx] = (tokens, set(bigrams(list(tokens))))
+            features[idx] = (
+                tokens,
+                set(bigrams(list(tokens))),
+                set(tokenize(chunk.title)),
+                set(tokenize(chunk.section)),
+            )
         self._reranker.attach_features(features)
 
     def search(self, query: str, *, k: int, mode: str) -> list[Passage]:
@@ -104,20 +120,40 @@ class _TenantView:
             return self._passages(self._sparse.search(tokenize(query), k=k)[:k])
         if mode == "dense":
             return self._passages(self._dense_search(query, k=k)[:k])
+        candidates, context = self.candidate_set(query)
+        reranked = self._reranker.rerank(
+            query, candidates, k=min(k, s.rerank_candidates), context=context
+        )
+        return self._passages(reranked)
+
+    def candidate_set(
+        self, query: str
+    ) -> tuple[list[tuple[int, float, str, str, str]], dict[str, dict[int, float]]]:
+        """Exactly what the reranker sees: fused candidates plus their score context.
+
+        Shared with the M8 trainer on purpose - training on a different feature
+        pipeline than serving is how a learned ranker silently stops working.
+        """
+        s = self._settings
         sparse_pool = self._sparse.search(tokenize(query), k=s.sparse_candidates)
         dense_pool = self._dense_search(query, k=s.dense_candidates)
         lists = [[idx for idx, _ in sparse_pool], [idx for idx, _ in dense_pool]]
-        fused = rrf(
-            lists, k=s.rrf_k, weights=(s.rrf_weight_sparse, s.rrf_weight_dense)
-        )
+        fused = rrf(lists, k=s.rrf_k, weights=(s.rrf_weight_sparse, s.rrf_weight_dense))
         fused_top = sorted(fused.items(), key=lambda item: (-item[1], item[0]))
-        fused_top = fused_top[: s.fused_candidates]
-        candidates = [
-            (idx, score, self._chunks[idx].text, self._chunks[idx].title)
-            for idx, score in fused_top
-        ]
-        reranked = self._reranker.rerank(query, candidates, k=min(k, s.rerank_candidates))
-        return self._passages(reranked)
+        candidates: list[tuple[int, float, str, str, str]] = []
+        for idx, score in fused_top[: s.fused_candidates]:
+            chunk = self._chunks[idx]
+            candidates.append((idx, score, chunk.text, chunk.title, chunk.section))
+        return candidates, {"sparse": dict(sparse_pool), "cosine": dict(dense_pool)}
+
+    @property
+    def idf(self) -> dict[str, float]:
+        """Corpus idf of this view; the trainer needs it to build the same features."""
+        return self._sparse.idf
+
+    def doc_of(self, idx: int) -> str:
+        """Document id of a candidate index, for labelling training pairs (M8)."""
+        return self._chunks[idx].doc_id
 
     def diagnose(self, query: str, passage: Passage) -> dict[str, float]:
         """Confidence components of one retrieved passage, formulas from ATL-TDD-001 s.7."""

@@ -45,6 +45,11 @@ class Settings:
     rerank_weight_coverage: float = 0.40
     rerank_weight_bigram: float = 0.15
     rerank_weight_title: float = 0.05
+    # M8: "learned" loads committed weights trained on a document-held-out split, but the
+    # loader only honours a file marked "adopted": true, so an experiment cannot ship by
+    # accident. "blend" is the MVP hand weighting and the fallback in every other case.
+    rerank_kind: str = "learned"
+    rerank_model_path: str = "models/rerank-v1.json"
 
     # candidate pools (ATL-TDD-001 s.1)
     sparse_candidates: int = 50
