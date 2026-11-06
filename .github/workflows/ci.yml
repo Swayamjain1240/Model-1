@@ -26,4 +26,5 @@ jobs:
         run: python scripts/check_corpus.py
       - name: eval gate (metrics vs committed baseline)
         run: python -m eval.run_eval --gate
-      # full unit / integration splits and additional adversarial gates land in M4+
+      - name: safety suite (injection, tenancy, log hygiene, degraded mode)
+        run: python -m eval.safety

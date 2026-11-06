@@ -7,7 +7,7 @@ VENV_PY ?= $(PY)
 # on a Windows checkout the venv interpreter is .venv/Scripts/python.exe;
 # on Unix .venv/bin/python - set VENV_PY accordingly when using venv targets.
 
-.PHONY: corpus limits test eval embed check ci setup ingest serve handover
+.PHONY: corpus limits test eval embed safety check ci setup ingest serve handover
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -25,9 +25,14 @@ eval:
 embed:
 	$(PY) -m eval.embeddings
 
+# stage-2 layer 2 (M9): injection suite, tenant probes, log audit, degraded mode
+safety:
+	$(PY) -m eval.safety
+
 check: limits corpus test
 
-ci: check
+# the CI gate also runs the safety suite: a guard regression must fail the build
+ci: check safety
 
 # FR-28 one-command path (the clean-clone proof in M5 of the plan / our M6):
 setup:
