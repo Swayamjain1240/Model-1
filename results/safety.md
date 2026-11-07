@@ -1,6 +1,6 @@
 # Safety suite — injection, tenancy, log hygiene, degraded mode (M9)
 
-Command: `python -m eval.safety` · commit `c89a0fd` · platform: Windows-11-10.0.26300-SP0
+Command: `python -m eval.safety` · commit `d1a5f3b` · platform: Windows-11-10.0.26300-SP0
 
 ## Requirement outcomes
 
