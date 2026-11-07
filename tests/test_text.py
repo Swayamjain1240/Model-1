@@ -8,6 +8,10 @@ from atlas.config import Settings
 from atlas.text.chunk import chunk_document, parse_pairs
 from atlas.text.tokenize import bigrams, sentences, tokenize
 
+# line breaks built by name, so multi-paragraph fixtures cannot be mis-read as broken literals
+NL = chr(10)
+DD = NL + NL
+
 
 def test_tokenizer_is_deterministic_and_folds_plurals():
     assert tokenize("Courses and classes sessions")[:3] == ["course", "class", "session"]
@@ -56,12 +60,30 @@ def test_overlap_carries_the_last_paragraph_forward():
         assert later.text.startswith(earlier.text.split("\n\n")[-1])
 
 
-def test_section_label_is_the_last_paragraphs_section():
+def test_section_label_is_the_section_holding_most_of_the_chunk():
+    """A merged chunk is labelled by its dominant section, never by its last paragraph."""
+    doc = NL.join(["# Doc", "", "## Short", "", "Two words here.", "", "## Dominant", "",
+                   " ".join(["policy"] * 40), "", "## Trailing", "", "Three more words."])
+    chunks = chunk_document(doc)
+    assert len(chunks) == 1
+    assert chunks[0].section == "Dominant"
+
+
+def test_section_label_falls_back_deterministically_on_a_tie():
+    doc = NL.join(["# Doc", "", "## First", "", "same size text", "", "## Second", "",
+                   "also same size"])
+    chunks = chunk_document(doc)
+    assert len(chunks) == 1
+    assert chunks[0].section == "First"
+
+
+def test_a_merged_chunk_still_covers_the_whole_document():
     chunks = chunk_document(_MULTI_SECTION_DOC)
-    _, pairs = parse_pairs(_MULTI_SECTION_DOC)
-    sections = [section for section, _ in pairs]
-    assert chunks[-1].section == sections[-1]
-    assert chunks[0].section in sections
+    combined = " ".join(chunk.text for chunk in chunks)
+    for paragraph in _MULTI_SECTION_DOC.split(DD):
+        text = paragraph.strip()
+        if text and not text.startswith("#"):
+            assert text in combined
 
 
 def test_short_or_empty_documents_edge_cases():

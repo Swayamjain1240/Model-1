@@ -80,6 +80,19 @@ def chunk_document(text: str, *, settings: Settings = SETTINGS) -> list[Chunk]:
 
 
 def _emit(paragraphs: list[tuple[str, str]]) -> Chunk:
-    section = paragraphs[-1][0]
+    """Label the chunk by the section that holds most of its tokens.
+
+    A chunk spans section boundaries whenever the budget lets it, so the label names the
+    ground the chunk mostly stands on, as the docstring above promises. Taking the *last*
+    paragraph's section instead produced citations like "Digital access" for a passage about
+    borrowing limits - the reader sees a heading that has nothing to do with the answer.
+    Ties go to the section that appears first, so the choice is deterministic.
+    """
+    weights: dict[str, int] = {}
+    first_seen: dict[str, int] = {}
+    for position, (section, text) in enumerate(paragraphs):
+        weights[section] = weights.get(section, 0) + len(tokenize(text))
+        first_seen.setdefault(section, position)
+    section = max(weights, key=lambda name: (weights[name], -first_seen[name]))
     text = "\n\n".join(item[1] for item in paragraphs)
     return Chunk(section=section, text=text)
