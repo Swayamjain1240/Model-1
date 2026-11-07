@@ -3,58 +3,245 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Atlas — knowledge assistant that refuses to guess</title>
+<title>Atlas — campus policy assistant</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; padding: 0 16px; color: #1a1a2e; }
-  h1 { font-size: 1.4rem; } h1 span { color: #b91c1c; }
-  form { display: flex; gap: 8px; margin: 16px 0; }
-  input[type=text] { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
-  button { padding: 10px 18px; border: 0; border-radius: 8px; background: #1a1a2e; color: #fff; cursor: pointer; }
-  .card { border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
-  .refused { border-color: #fca5a5; background: #fef2f2; }
-  .cite { color: #475569; font-size: .85rem; margin-top: 8px; }
-  .meta { color: #64748b; font-size: .75rem; margin-top: 6px; }
-  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; }
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #12161c; --muted: #5b6675;
+    --line: #e2e6ec; --accent: #1d4ed8; --warn: #b45309; --warn-bg: #fffbeb;
+    --stop: #b91c1c; --stop-bg: #fef2f2; --ok: #047857; --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1216; --panel: #171c22; --ink: #e6e9ef; --muted: #9aa4b2;
+      --line: #232b35; --accent: #7aa2ff; --warn: #f0a35e; --warn-bg: #241a10;
+      --stop: #f87171; --stop-bg: #2a1414; --ok: #34d399;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.55 -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 780px; margin: 0 auto; padding: 40px 20px 72px; }
+  header h1 { margin: 0 0 6px; font-size: 1.6rem; letter-spacing: -0.01em; }
+  header .sub { margin: 0; color: var(--muted); }
+  .status { margin-top: 10px; font: 12.5px/1.5 var(--mono); color: var(--muted); }
+  form { display: flex; gap: 10px; margin: 26px 0 10px; }
+  input[type=search] {
+    flex: 1; padding: 13px 15px; font-size: 1rem; color: var(--ink);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  }
+  input[type=search]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button {
+    padding: 13px 22px; font-size: .95rem; font-weight: 600; color: #fff;
+    background: var(--accent); border: 0; border-radius: 10px; cursor: pointer;
+  }
+  button[disabled] { opacity: .55; cursor: progress; }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 26px; }
+  .examples button {
+    padding: 6px 11px; font-size: .82rem; font-weight: 500;
+    color: var(--muted); background: transparent; border: 1px solid var(--line);
+    border-radius: 999px;
+  }
+  .examples button:hover { color: var(--ink); border-color: var(--accent); }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 18px 20px; margin-top: 14px;
+  }
+  .card h2 { margin: 0 0 10px; font-size: .78rem; font-weight: 700;
+             letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+  .answer { margin: 0; font-size: 1.02rem; }
+  .verdict { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .tag { font: 600 11.5px/1 var(--mono); padding: 5px 8px; border-radius: 6px;
+         text-transform: uppercase; letter-spacing: .06em; }
+  .tag.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+  .tag.stop { color: var(--stop); background: color-mix(in srgb, var(--stop) 16%, transparent); }
+  .tag.warn { color: var(--warn); background: var(--warn-bg); }
+  .refused { border-color: var(--stop); background: var(--stop-bg); }
+  .refused .answer { color: var(--stop); font-weight: 600; }
+  /* room for the "gate" label, which sits above the bar and must not touch the answer text */
+  .confidence { margin: 16px 0 4px; padding-top: 20px; }
+  .bar { position: relative; height: 8px; border-radius: 999px; background: var(--line); overflow: visible; }
+  .bar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--accent); }
+  .bar .gate { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--stop); }
+  .bar .gate::after {
+    content: "gate"; position: absolute; top: -18px; left: -9px;
+    font: 10px/1 var(--mono); color: var(--stop); text-transform: uppercase;
+  }
+  .scale { display: flex; justify-content: space-between; margin-top: 6px;
+           font: 11.5px/1 var(--mono); color: var(--muted); }
+  .sources { margin: 14px 0 0; padding: 0; list-style: none; }
+  .sources li { border-top: 1px solid var(--line); padding: 14px 0 0; margin-top: 14px; }
+  .sources li:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+  .sources .title { font-weight: 650; }
+  .sources .where { font: 12px/1.5 var(--mono); color: var(--muted); margin: 3px 0 8px; }
+  .sources .snippet { margin: 0; color: var(--muted); font-size: .94rem; }
+  .meta { margin-top: 16px; font: 11.5px/1.6 var(--mono); color: var(--muted); }
+  .note { color: var(--muted); font-size: .9rem; margin: 18px 0 0; }
+  .error { color: var(--stop); font-weight: 600; }
+  @media (max-width: 560px) {
+    form { flex-direction: column; }
+    button[type=submit] { width: 100%; }
+  }
 </style>
 </head>
 <body>
-<h1>Atlas — <span>refuses to guess</span></h1>
-<p>Ask a campus-policy question. Either you get a verbatim answer with its citation, or an
-explicit refusal — <code>no grounded answer</code>.</p>
-<form onsubmit="ask(event)">
-  <input id="q" type="text" placeholder="e.g. What is the minimum attendance to stay enrolled?">
-  <button>Ask</button>
-</form>
-<div id="out"></div>
+<main>
+  <header>
+    <h1>Atlas</h1>
+    <p class="sub">Campus policy assistant. It answers with the exact policy passage and its source,
+      or it tells you it has no grounded answer.</p>
+    <p class="status" id="status">connecting to the API…</p>
+  </header>
+
+  <form id="ask-form" autocomplete="off">
+    <label class="sr-only" for="q" hidden>Your question</label>
+    <input id="q" type="search" name="q" required
+           placeholder="e.g. How many books can I borrow from the library?">
+    <button type="submit" id="submit">Ask</button>
+  </form>
+  <div class="examples" id="examples" hidden>
+    <button type="button">What is the minimum attendance to stay enrolled?</button>
+    <button type="button">When can I drop a course without it appearing on my transcript?</button>
+    <button type="button">What happens to a course where attendance fell below sixty-five percent?</button>
+    <button type="button">What is on the hostel mess menu next week?</button>
+  </div>
+
+  <div id="out" aria-live="polite"></div>
+</main>
+
 <script>
-async function ask(event) {
-  event.preventDefault();
-  const q = document.getElementById('q').value.trim();
-  if (!q) return;
+  const API = { theta: null, embedder: null };
   const out = document.getElementById('out');
-  out.innerHTML = '<div class="card">thinking…</div>';
-  try {
-    const res = await fetch('/v1/ask?q=' + encodeURIComponent(q), {
-      headers: { 'X-Tenant': localStorage.getItem('atlas-tenant') || 'campus' }
+  const form = document.getElementById('ask-form');
+  const input = document.getElementById('q');
+  const submit = document.getElementById('submit');
+  const examples = document.getElementById('examples');
+
+  const esc = (value) => String(value).replace(/[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // The refusal line is drawn from the running server, so a page served by a hashed-encoder
+  // process shows 0.13 and a trained one shows 0.31 instead of a number copied from a report.
+  fetch('/v1/healthz')
+    .then((response) => response.json())
+    .then((health) => {
+      API.theta = health.theta ?? null;
+      API.embedder = health.embedder ?? null;
+      document.getElementById('status').textContent =
+        `model ${API.embedder} · refusal gate θ = ${API.theta?.toFixed(2)}`;
+      examples.hidden = false;
+    })
+    .catch(() => {
+      document.getElementById('status').textContent =
+        'API unreachable — is the server running on this port?';
     });
-    const data = await res.json();
-    if (data.error) {
-      out.innerHTML = `<div class="card refused"><b>${data.error.code}</b> — ${data.error.message}</div>`;
+
+  function confidenceBlock(confidence) {
+    const theta = API.theta;
+    if (theta === null || typeof confidence !== 'number') return '';
+    const pct = Math.max(0, Math.min(1, confidence)) * 100;
+    const gate = Math.max(0, Math.min(1, theta)) * 100;
+    const verdict = confidence >= theta
+      ? `above the refusal line (${theta.toFixed(2)})`
+      : `below the refusal line (${theta.toFixed(2)})`;
+    return `
+      <div class="confidence">
+        <div class="bar">
+          <div class="fill" style="width:${pct.toFixed(1)}%"></div>
+          <div class="gate" style="left:${gate.toFixed(1)}%"></div>
+        </div>
+        <div class="scale">
+          <span>confidence ${confidence.toFixed(2)} — ${esc(verdict)}</span>
+          <span>1.00</span>
+        </div>
+      </div>`;
+  }
+
+  function sources(citations) {
+    if (!citations?.length) return '';
+    return `<ul class="sources">${citations.map((c) => `
+      <li>
+        <div class="title">${esc(c.title)}</div>
+        <!-- section is the chunk's dominant heading, not a precise anchor (docs/13), so the
+             card shows the document and its text rather than a heading it may have outgrown -->
+        <div class="where">${esc(c.doc_id)}</div>
+        <p class="snippet">${esc(c.snippet)}</p>
+      </li>`).join('')}</ul>`;
+  }
+
+  function footer(data) {
+    const timings = Object.entries(data.timings || {})
+      .map(([key, value]) => `${key.replace('_ms', '')} ${Number(value).toFixed(1)}ms`)
+      .join(' · ');
+    return `<div class="meta">${esc(timings)} · trace ${esc(data.trace_id)}</div>`;
+  }
+
+  function render(data) {
+    if (data.refused) {
+      out.innerHTML = `
+        <div class="card refused">
+          <div class="verdict"><span class="tag stop">no grounded answer</span></div>
+          <p class="answer">I don't have a policy passage that answers that, so I won't guess.</p>
+          ${confidenceBlock(data.confidence)}
+          <p class="note">Say it another way, or ask about attendance, exams, fees, hostel,
+            library, scholarships, internships or placements.</p>
+          ${footer(data)}
+        </div>`;
       return;
     }
-    const timings = Object.entries(data.timings).map(([k, v]) => `${k}=${v}`).join(' · ');
-    out.innerHTML = data.refused
-      ? `<div class="card refused"><b>REFUSED</b> — no grounded answer; citations withheld
-         (confidence ${data.confidence} < gate)</div><div class="meta">${timings}</div>`
-      : `<div class="card"><p>${data.text}</p>
-         ${data.citations.map(c =>
-           `<div class="cite">📄 <b>${c.title}</b> — ${c.section} · <code>${c.doc_id}</code></div>`
-         ).join('')}
-         <div class="meta">confidence ${data.confidence} · ${timings}</div></div>`;
-  } catch (err) {
-    out.innerHTML = `<div class="card refused">request failed: ${err}</div>`;
+    out.innerHTML = `
+      <div class="card">
+        <div class="verdict">
+          <span class="tag ok">answer</span>
+          ${data.degraded ? '<span class="tag warn">degraded — verbatim passage</span>' : ''}
+        </div>
+        <p class="answer">${esc(data.text)}</p>
+        ${confidenceBlock(data.confidence)}
+        <h2 style="margin-top:18px">source</h2>
+        ${sources(data.citations)}
+        ${footer(data)}
+      </div>`;
   }
-}
+
+  async function ask(question) {
+    const query = question.trim();
+    if (!query) return;
+    input.value = query;
+    submit.disabled = true;
+    out.innerHTML = '<div class="card"><p class="answer">searching the policy corpus…</p></div>';
+    try {
+      const response = await fetch('/v1/ask?q=' + encodeURIComponent(query), {
+        headers: { 'X-Tenant': localStorage.getItem('atlas-tenant') || 'campus' },
+        signal: AbortSignal.timeout(15000),
+      });
+      const data = await response.json();
+      if (data.error) {
+        out.innerHTML = `<div class="card refused">
+          <div class="verdict"><span class="tag stop">${esc(data.error.code)}</span></div>
+          <p class="answer error">${esc(data.error.message)}</p>
+          ${data.error.code === 'AUTH_REQUIRED'
+            ? '<p class="note">This server has ATLAS_API_TOKEN set; a page served from it cannot hold a secret, so use an authenticated client.</p>'
+            : ''}
+        </div>`;
+        return;
+      }
+      render(data);
+    } catch (error) {
+      out.innerHTML = `<div class="card refused"><p class="answer error">
+        request failed: ${esc(error.message)}</p></div>`;
+    } finally {
+      submit.disabled = false;
+    }
+  }
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    ask(input.value);
+  });
+  examples.addEventListener('click', (event) => {
+    if (event.target.tagName === 'BUTTON') ask(event.target.textContent);
+  });
 </script>
 </body>
 </html>
