@@ -200,17 +200,30 @@ tests/             unit · contract · integration
 ## Run the API (60-second demo)
 
 ```bash
-python -m atlas.cli serve                  # default dev server on 127.0.0.1:8070
+# the trained encoder is what the calibrated gate was measured on:
+ATLAS_EMBEDDER=potion-base-8M python -m atlas.cli serve   # default port 8070
 # with auth:  ATLAS_API_TOKEN=mytoken python -m atlas.cli serve
 curl "http://127.0.0.1:8070/v1/ask?q=What%20is%20the%20minimum%20attendance" \
      -H "Authorization: Bearer mytoken"
-# or open http://127.0.0.1:8070/ for the one-page demo
+# or open http://127.0.0.1:8070/ for the page
 ```
 
 Every answer is a verbatim span with its citation or an explicit refusal (theta 0.13 gate);
 wrong-token requests get `401 AUTH_REQUIRED`; empty/stopword-only queries get
 `400 INPUT_INVALID` (FR-19). The concurrent load test: start the server, then run
 `python -m bench.load_test --token mytoken` (results committed in `results/loadtest.md`).
+
+The page (`web/demo.html`, no build step, no external assets) is the product surface: a question
+box, the answer as a verbatim span, **the confidence drawn against the refusal line the running
+process actually uses** (read from `GET /v1/healthz`, so a hashed process shows 0.13 and a trained
+one 0.31), then the source document and text, then the stage timings and the trace id. A refusal
+is a red card that says so, with the same bar showing why it refused. Screenshots:
+`docs/ui-answer.png`, `docs/ui-refusal.png`.
+
+Two limits the page cannot hide. There are no CORS headers, so the page has to be served by the
+same process (it is, at `GET /`). And a page served by the API cannot hold a secret, so with
+`ATLAS_API_TOKEN` set the browser gets `401 AUTH_REQUIRED` and the page explains why - real browser
+auth needs a session layer, which is not built.
 
 ## Reproduce every number
 

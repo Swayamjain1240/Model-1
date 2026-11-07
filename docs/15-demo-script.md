@@ -10,7 +10,7 @@ Start clean:
 make setup          # venv + deps
 make ingest         # corpus -> SQLite (idempotent; run twice to prove it)
 make eval           # rewrites results/eval_report.md
-python -m atlas.cli serve       # API + demo page on http://127.0.0.1:8070
+ATLAS_EMBEDDER=potion-base-8M python -m atlas.cli serve   # page + API on http://127.0.0.1:8070
 ```
 
 Open <http://127.0.0.1:8070/> in one tab and `dashboard.html` in another — the dashboard is

@@ -10,8 +10,10 @@ python -m atlas.cli --db data/atlas.db ingest corpus/campus   # once
 python -m atlas.cli --db data/atlas.db serve                  # then open http://127.0.0.1:8070/
 ```
 
-The demo page answers **with citations** or refuses **below the calibrated
-gate** (θ = 0.13). With `ATLAS_API_TOKEN` set, unauthenticated requests get
+The page answers **with citations** or refuses **below the calibrated gate**, and it draws the
+line from `GET /v1/healthz` instead of a copied constant, so θ reads 0.13 with the hashed
+stand-in and 0.31 with `ATLAS_EMBEDDER=potion-base-8M`. The hashed default false-accepts
+off-topic questions that the trained encoder refuses, so demo the trained one. With `ATLAS_API_TOKEN` set, unauthenticated requests get
 `401 AUTH_REQUIRED`. On the make side: `make setup && make ingest && make serve`
 (FR-28; on Unix set `VENV_PY=.venv/bin/python`, on Windows it is
 `.venv/Scripts/python.exe`).
@@ -64,6 +66,14 @@ repository is not reproducible, this receipt is the answer.
   is ~10k chunks (NFR-03); beyond that, ANN storage.
 - **Not deployed**: the API has no deployment I/O here; the deepening work
   (stage 2) replaces the hashed-TF-IDF embedder seed with a real model.
+- **Answer selection can pick a table-of-contents line**: a chunk merges several sections, so
+  a document's opening summary ("Minimum attendance requirements, condonation rules, ...") can
+  out-score the sentence holding the figure, because it repeats more query words. Found by
+  reading the answer in the UI, not by a metric. A title-discounting fix was measured and
+  **rejected**: 6 of 24 answers changed and 2 got worse (they became the summary line), because
+  discounting title words flattens the scores and hands the tie to document order. A real fix
+  needs sentence-level labels, which the project does not have; recorded here, not patched with
+  a heuristic.
 
 ## 4. Stage-2 roadmap in one paragraph
 
