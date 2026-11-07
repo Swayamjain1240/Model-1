@@ -7,7 +7,7 @@ VENV_PY ?= $(PY)
 # on a Windows checkout the venv interpreter is .venv/Scripts/python.exe;
 # on Unix .venv/bin/python - set VENV_PY accordingly when using venv targets.
 
-.PHONY: corpus limits test eval embed ablation safety bench soak dashboard trace gate-demo check ci setup ingest serve handover
+.PHONY: corpus limits test eval embed ablation holdout safety bench soak soak-interactive dashboard trace gate-demo check ci setup ingest serve handover
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -29,6 +29,10 @@ embed:
 ablation:
 	$(PY) -m eval.ablation
 
+# M11: out-of-sample set; fit on v1, decide on v2 (never the reverse)
+holdout:
+	$(PY) -m eval.holdout
+
 # stage-2 layer 2 (M9): injection suite, tenant probes, log audit, degraded mode
 safety:
 	$(PY) -m eval.safety
@@ -39,6 +43,10 @@ bench:
 
 soak:
 	$(PY) -m bench.sweep --soak-seconds 1800 --users 10
+
+# M11: the same 10 users with 100 ms think time, i.e. people rather than a saturation test
+soak-interactive:
+	$(PY) -m bench.sweep --soak-seconds 900 --users 10 --think-ms 100
 
 # M10: the dashboard is generated from results/*.json, so it cannot drift from the reports
 dashboard:
