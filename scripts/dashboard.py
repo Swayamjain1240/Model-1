@@ -84,12 +84,13 @@ def embeddings_panel() -> str:
             ]
         )
     body = table(
-        ["encoder", "dim", "dense recall@10", "hybrid recall@10", "theta", "answer rate",
-         "refusal"], rows
+        ["encoder", "dim", "dense recall@10", "hybrid recall@10", "theta by rule",
+         "answer @rule", "refusal @rule"], rows
     )
     note = (
         "theta is per encoder: a trained encoder's cosines are not comparable to the hashed "
-        "stand-in's, so re-using one threshold would measure the scale, not the system."
+        "stand-in's, so re-using one threshold would measure the scale, not the system. "
+        "The shipped theta (0.13 hashed, 0.31 trained) and its answer rate are in the report."
     )
     return panel("Stage-2 encoder delta", "embeddings.json", body, note)
 
