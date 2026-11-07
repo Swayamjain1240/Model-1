@@ -58,3 +58,23 @@ The M3 report also shows the theta sweep saturating (answer rate 0.00 at every
 candidate threshold): the hashed TF-IDF stand-in's raw confidence sits far below
 the canonical 0.20–0.40 range. Product-side calibrated theta is M4 work, placed
 where the gate actually runs inside the answering path.
+
+## v2, appended (M11) — and the rule that keeps it usable
+
+`golden_set_v2.jsonl` is the sanctioned widening: 12 new answerable questions (`v2-0NN`), each
+asking a *fact v1 does not ask*, and 6 new unanswerable ones (`v2-uNN`). v1 was not edited, and
+the v1 baseline in `results/baseline.json` still describes exactly the 24+6 set it always did.
+
+The rule for a holdout, written here before the numbers were produced:
+
+- **Fit on v1, decide on v2.** Weights, thresholds, rankers and prompts are chosen using v1 only.
+- **v2 is read once per decision.** The theta sweep is printed for both sets in
+  `results/holdout.md`, but theta is *not* moved to the value that happens to score best on v2 —
+  that would consume the set and leave the next claim untested.
+- **A v2 pass only counts if v2 can discriminate.** Recall on v2 saturates at 1.0000 for four of
+  five configurations, so v2 supports "no relevant document is missed on easy questions" and
+  nothing stronger about which ranker wins.
+
+What v2 has already changed: the refusal gate's accuracy was **1.0000 on v1** and **0.1667 on
+v2**. That is reported in `README.md` and `results/holdout.md` as a failed generalisation, not
+tuned away.
