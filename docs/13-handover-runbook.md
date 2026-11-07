@@ -44,6 +44,7 @@ repository is not reproducible, this receipt is the answer.
 | stage-2 encoder delta (dense 0.75 → 1.00, answer rate 0.29 → 0.96) | `results/embeddings.md` |
 | stage-2 reranker, held out by document (0.90, not adopted) | `results/rerank.md` |
 | safety suite: injections, tenant probes, log audit, degraded mode | `results/safety.md` |
+| out-of-sample set: retrieval generalises, the refusal gate does not | `results/holdout.md` |
 
 ## 3. Known limitations (state them, do not hide them)
 
@@ -52,6 +53,12 @@ repository is not reproducible, this receipt is the answer.
   (see `results/robustness.md`). The fix is real embeddings, not gate tuning.
 - **recall@10 is 0.875, not the 0.90 target (NFR-04)**: nine queries lost by
   hybrid RRF-k, diagnosed in `results/fr11_diagnosis.md`.
+- **The refusal gate does not generalise**: theta was fitted to six unanswerable
+  questions, where it scored 1.0000. On the six written afterwards (v2) it scores
+  **0.1667** - the classes overlap, and no theta in the grid separates them
+  (`results/holdout.md`). Clients should read the `confidence` field rather than
+  treat "answered" as "supported". The fix is a second signal, not a new threshold
+  (ADR-0007).
 - **Single-node, single-process**: stdlib `ThreadingHTTPServer`, SQLite storage.
   No containers, no cloud, per project constraint. The documented scale limit
   is ~10k chunks (NFR-03); beyond that, ANN storage.

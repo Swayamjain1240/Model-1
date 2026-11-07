@@ -1,6 +1,7 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
-**Status: MVP and stage 2 complete except FR-11.** M1–M6 built the measured MVP: corpus, hand-labeled
+**Status: MVP and stage 2 complete except FR-11; one holdout test says the refusal gate
+does not generalise (M11).** M1–M6 built the measured MVP: corpus, hand-labeled
 question set, index layer (ingest, chunking, store, hybrid retrieval), the first **measured
 baseline** on the frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75), the **answer
 path** (extractive cited answers, safety-first refusal gate), the **HTTP API** (`GET /v1/ask`,
@@ -10,8 +11,9 @@ token auth, machine-readable errors, four stage timings, one-page demo at `/`, N
 
 M7 replaced the hashed stand-in with a **real pretrained encoder** (`potion-base-8M`, 256-d,
 CPU-only) and re-measured the same frozen set: **dense recall@10 0.75 → 1.00**, and the gate's
-honest **answer rate 0.29 → 0.96** at refusal accuracy 1.00 with theta re-calibrated per score
-scale (0.31, `results/embeddings.md`). The remaining open requirement is **FR-11**: with a strong
+honest **answer rate 0.29 → 0.96** at refusal accuracy 1.00 — measured on the same six
+unanswerable questions theta was fitted to, which M11 shows was optimistic — with theta
+re-calibrated per score scale (0.31, `results/embeddings.md`). The remaining open requirement is **FR-11**: with a strong
 dense side, hybrid 0.92 still trails dense alone 1.00, and the ablation shows the hand-tuned
 rerank blend — not fusion — is what demotes correct chunks. That is the next layer's job.
 
@@ -39,6 +41,19 @@ a control rather than a claim (`results/ci_gate.md`). The **ablation finally has
 n=24 and a 95% Wilson interval — which is what turns "the reranker is the bottleneck" from an
 inference into a measurement, and shows the blend only *helps* while the encoder is the hashed
 stand-in.
+
+M11 asked the obvious question about all of the above: do the numbers survive a question set the
+design never saw? `eval/golden_set_v2.jsonl` appends 12 answerable questions (each asking a fact
+v1 does not ask) and 6 unanswerable ones, with the rule written down before the run — **fit on
+v1, decide on v2** (`results/holdout.md`). Retrieval survives: every configuration reaches
+recall@10 1.0000 on v2, so fusion misses nothing, though that also means v2 cannot rank the
+rankers. The **refusal gate does not survive**: accuracy **1.0000 on v1, 0.1667 on v2**, because
+the two classes overlap on the only feature it uses - the weakest answerable v2 question scores
+0.279 and the strongest unanswerable one 0.434. No theta separates them; the best reachable v2
+refusal accuracy is 0.50, and it costs half the answerable questions. Theta is deliberately *not*
+moved, because tuning on the holdout is what makes a holdout worthless. The same run also shows
+the fusion weights are inert (all six settings score identically), so they stay at 1.0/1.0.
+
 
 ---
 
@@ -108,7 +123,7 @@ appears anywhere else.
 |---|---|---|
 | Retrieval | recall@10, precision@5, nDCG@10, MRR | hand-labeled question set |
 | Retrieval | hybrid vs. single-retriever uplift | ablation table, same question set |
-| Behaviour | refusal accuracy on unanswerable questions | held-out unanswerable subset |
+| Behaviour | refusal accuracy on unanswerable questions | unanswerable subset — 1.00 on v1, **0.17 on the appended v2 set** (M11) |
 | Grounding | citation coverage; unsupported-claim rate | verifier + sampled manual audit |
 | Performance | p50 / p95 / p99, throughput, error rate | staged load test |
 | Safety | prompt-injection block rate, cross-tenant leaks | adversarial suites in CI |
@@ -120,7 +135,8 @@ recall@10 on the 24 answerable queries is **0.96 (sparse) / 0.88 (hybrid) / 0.75
 is currently *worse than sparse alone* (FR-11 not yet met, recorded with query-level evidence in
 `results/fr11_diagnosis.md`). The M4 calibration report (`results/calibration.md`) shows the
 stand-in scores overlap between answerable and unanswerable queries, so the gate is set
-safety-first (theta 0.13, zero false accepts, refusal accuracy 1.00) — the answer rate recovers
+safety-first (theta 0.13, zero false accepts, refusal accuracy 1.00 on v1 — M11 measures
+0.17 on questions the threshold was not fitted to) — the answer rate recovers
 when stage-2 embeddings separate the scores. Later changes re-run the same frozen set and report
 themselves as deltas against `results/baseline.json`.
 
@@ -201,6 +217,7 @@ Every claim in this README comes from a target that rewrites a file in `results/
 | `make eval` | `results/eval_report.md` | recall@10 sparse 0.96 · hybrid 0.88 · dense 0.75 (frozen set) |
 | `make embed` | `results/embeddings.md` | encoder swap: dense recall@10 0.75 → 1.00, answer rate 0.29 → 0.96 |
 | `make ablation` | `results/ablation.md` | five configurations × two encoders, control arm, 95% Wilson intervals |
+| `make holdout` | `results/holdout.md` | out-of-sample v2 set: recall holds at 1.0000, refusal accuracy falls 1.00 → 0.17 |
 | `python -m eval.rerank_train` | `results/rerank.md` | trained reranker 0.90 held-out vs dense 1.00 → not adopted |
 | `make safety` | `results/safety.md` | 40/40 attacks refused, 0 tenant leaks, 0 PII in logs, 3/3 degraded |
 | `make bench` | `results/bench.md` | NFR-01 burst PASS: p95 43.25 ms at 10 users, 359 rps at 50 |

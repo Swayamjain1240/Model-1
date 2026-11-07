@@ -189,6 +189,37 @@ def soak_panel() -> str:
     return panel("Soak", "soak.json", table(["metric", "value"], rows))
 
 
+def holdout_panel() -> str:
+    """The finding that matters most for anyone trusting a number on this page."""
+    report = load("holdout.json")
+    if not report:
+        return panel("Holdout", "holdout.json", "<p class='missing'>not run</p>")
+    sets = report.get("sets", {})
+    shipped = report.get("configs", {}).get("hybrid + blend (shipped)", {})
+    gate = report.get("confidence", {}).get("shipped", {})
+    decision = report.get("decision", {})
+    rows = []
+    for label in ("v1", "v2"):
+        recall = shipped.get(label, {}).get("recall", {})
+        rows.append([
+            f"{label} (n={sets.get(label, {}).get('answerable', 0)}+"
+            f"{sets.get(label, {}).get('unanswerable', 0)})",
+            f"{recall.get('mean', 0):.3f}",
+            f"{gate.get(label, {}).get('answer_rate', 0):.3f}",
+            f"{gate.get(label, {}).get('refusal_accuracy', 0):.3f}",
+        ])
+    verdict = (
+        "refusal does <strong>not</strong> generalise: theta was fitted to six questions"
+        if not decision.get("refusal_generalises") else "refusal holds out of sample"
+    )
+    return panel(
+        "Holdout — fit on v1, decide on v2", "holdout.json",
+        table(["set", "recall@10", "answer rate", "refusal acc."], rows),
+        f"{verdict}. FR-11 on v2: "
+        f"{'met, but v2 saturates' if decision.get('fr11_met_on_v2') else 'not met'}.",
+    )
+
+
 def handover_panel() -> str:
     report = load("handover.json")
     steps = report.get("steps", [])
@@ -214,6 +245,7 @@ def main() -> int:
         safety_panel(),
         load_panel(),
         soak_panel(),
+        holdout_panel(),
     ]
     html = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
