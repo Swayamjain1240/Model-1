@@ -32,7 +32,11 @@ M10 closed the operations layer without a container: a **latency curve** at 1/10
 (**NFR-01 PASS in a burst**: p95 43.25 ms at 10 users, 0 failures, 359 rps at 50) and a
 30-minute soak that **misses the same target** — p95 58.40 ms with 0 failures over 628,983
 requests — because sustained saturation leaves a queue that a few-second burst never builds.
-Both readings are committed; the stricter one is the one quoted next to the target. a
+Both readings are committed; the stricter one is the one quoted next to the target. A third
+run answers the requirement as written: the same ten users with 100 ms of think time between
+questions hold **p95 19.56 ms for 15 minutes** at 91 rps, 0 failures
+(`results/soak-interactive.md`) - so NFR-01 passes for user traffic and fails at
+saturation, and the dashboard shows both. a
 **dashboard generated from the committed reports** (`dashboard.html`), **six decision records**
 with their rejected alternatives (`docs/adr/`), a request **waterfall** that caught a negative
 `serialize_ms` shipping since M5, and a **demonstrated CI-gate failure** so the quality gate is
@@ -222,6 +226,7 @@ Every claim in this README comes from a target that rewrites a file in `results/
 | `make safety` | `results/safety.md` | 40/40 attacks refused, 0 tenant leaks, 0 PII in logs, 3/3 degraded |
 | `make bench` | `results/bench.md` | NFR-01 burst PASS: p95 43.25 ms at 10 users, 359 rps at 50 |
 | `make soak` | `results/soak.md` | 30 minutes at 10 users: 0 failures, but p95 58.40 ms — NFR-01 missed under sustained load |
+| `make soak-interactive` | `results/soak-interactive.md` | 15 minutes at 10 users with 100 ms think time: p95 19.56 ms, 0 failures — NFR-01 met for user traffic |
 | `make trace` | `results/trace.md` | per-stage waterfall: retrieval is ~87% of a request |
 | `make dashboard` | `dashboard.html` | all of the above on one page, generated from the JSON |
 | `make gate-demo` | `results/ci_gate.md` | the CI gate failing on purpose, exit code 1 |

@@ -64,8 +64,14 @@ def boot(db: Path) -> tuple[ThreadingHTTPServer, int]:
 
 
 def _worker(host: str, port: int, questions: list[str], token: str, index: int,
-            per_user: int, deadline: float, out_queue) -> None:
-    """One user process: `per_user` requests, or requests until `deadline` (0 = none)."""
+            per_user: int, deadline: float, out_queue, think_seconds: float = 0.0) -> None:
+    """One user process: `per_user` requests, or requests until `deadline` (0 = none).
+
+    `think_seconds` is the pause between one user's requests. Zero is a saturation test:
+    ten clients with no think time offer far more load than ten people ever would, and the
+    queue that builds is measured and reported as such. A non-zero value defines the
+    interactive load model instead, and the two are never mixed in one number.
+    """
     connection = http.client.HTTPConnection(host, port, timeout=10)
     latencies = array("f")
     failures = 0
@@ -91,13 +97,17 @@ def _worker(host: str, port: int, questions: list[str], token: str, index: int,
             latencies.append((time.perf_counter() - started) * 1000.0)
             failures += 0 if ok else 1
             attempt += 1
+            # soak mode sets per_user = 0 and runs until a deadline, so the pause cannot be
+            # conditioned on there being attempts left.
+            if think_seconds and (per_user == 0 or attempt < per_user):
+                time.sleep(think_seconds)
     finally:
         connection.close()
         out_queue.put((latencies.tolist(), failures))
 
 
 def run_load(base_url: str, questions: list[str], *, users: int, per_user: int = 0,
-             seconds: float = 0.0, token: str = "") -> dict:
+             seconds: float = 0.0, token: str = "", think_seconds: float = 0.0) -> dict:
     """Launch `users` client processes and aggregate their readings."""
     host, port_text = base_url.replace("http://", "").rsplit(":", 1)
     deadline = time.time() + seconds if seconds else 0.0
@@ -106,7 +116,8 @@ def run_load(base_url: str, questions: list[str], *, users: int, per_user: int =
     processes = [
         multiprocessing.Process(
             target=_worker,
-            args=(host, int(port_text), questions, token, index, per_user, deadline, queue),
+            args=(host, int(port_text), questions, token, index, per_user, deadline, queue,
+                  think_seconds),
         )
         for index in range(users)
     ]
@@ -151,12 +162,12 @@ def sweep(questions: list[str], db: Path, *, levels: tuple[int, ...], per_user: 
 
 
 def soak(questions: list[str], db: Path, *, seconds: float, users: int = 10,
-         token: str = "") -> dict:
+         token: str = "", think_seconds: float = 0.0) -> dict:
     """Sustained load: the run that finds growth a short burst cannot."""
     server, port = boot(db)
     try:
         row = run_load(f"http://127.0.0.1:{port}", questions, users=users,
-                       seconds=seconds, token=token)
+                       seconds=seconds, token=token, think_seconds=think_seconds)
     finally:
         server.shutdown()
         server.server_close()
@@ -219,13 +230,22 @@ def write_bench(rows: list[dict], payload: dict) -> None:
 
 
 def write_soak(row: dict, payload: dict) -> None:
+    """One report per load model, so an interactive number never overwrites the saturation one."""
     RESULTS.mkdir(exist_ok=True)
-    (RESULTS / "soak.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    stem = "soak-interactive" if row.get("think_ms") else "soak"
+    (RESULTS / f"{stem}.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    model = (
+        f"{row['think_ms']:.0f} ms think time per user (interactive model)"
+        if row.get("think_ms")
+        else "no think time (saturation model: the same users, offering far more load)"
+    )
     lines = [
         f"# Soak — {row['duration_seconds'] / 60:.0f} minutes at {row['users']} users (M10)",
         "",
         f"Command: `python -m bench.sweep --soak-seconds {int(row['duration_seconds'])} "
-        f"--users {row['users']}` · commit `{payload['provenance']['commit']}`",
+        f"--users {row['users']}"
+        + (f" --think-ms {row['think_ms']:.0f}" if row.get("think_ms") else "")
+        + f"` · commit `{payload['provenance']['commit']}`",
         "",
         "| metric | value |",
         "|---|---|",
@@ -236,13 +256,34 @@ def write_soak(row: dict, payload: dict) -> None:
         f"| p95 ms | {row['p95_ms']:.2f} |",
         f"| p99 ms | {row['p99_ms']:.2f} |",
         f"| sustained rps | {row['rps']:.1f} |",
+        f"| load model | {model} |",
         "",
         "## Interpretation",
         "",
         *payload["notes"],
+        *other_model_line(row),
         "",
     ]
-    (RESULTS / "soak.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (RESULTS / f"{stem}.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def other_model_line(row: dict) -> list[str]:
+    """Point at the other load model, so neither number can be quoted as if it were alone."""
+    other = "soak.json" if row.get("think_ms") else "soak-interactive.json"
+    path = RESULTS / other
+    if not path.exists():
+        return []
+    other_row = json.loads(path.read_text(encoding="utf-8")).get("row", {})
+    if not other_row:
+        return []
+    label = "no think time (saturation)" if row.get("think_ms") else "100 ms think time"
+    return [
+        "",
+        f"- The other load model is committed beside this one: `results/{other}` reports p95 "
+        f"{other_row['p95_ms']:.2f} ms at {other_row['users']} users with {label}. The two "
+        "answer different questions - headroom versus user traffic - and neither replaces "
+        "the other.",
+    ]
 
 
 def notes_for_sweep(rows: list[dict]) -> list[str]:
@@ -277,8 +318,14 @@ def notes_for_soak(row: dict, bench_p95: float | None) -> list[str]:
         f"{drift}. A leak or an unbounded cache would show here as growth.",
         f"- NFR-01 is written at {NFR01_USERS} users, and this run is exactly that load held "
         f"for {row['duration_seconds'] / 60:.0f} minutes: p95 {row['p95_ms']:.2f} ms against a "
-        f"{NFR01_P95_MS:.0f} ms target, so read strictly NFR-01 "
-        + ("passes." if row["p95_ms"] <= NFR01_P95_MS else "FAILS."),
+        f"{NFR01_P95_MS:.0f} ms target at {row['users']} concurrent users"
+        + (
+            f", each pausing {row['think_ms']:.0f} ms between questions, so read strictly "
+            "NFR-01 passes."
+            if row.get("think_ms")
+            else ", with no pause between requests (a saturation test), so read strictly "
+            "NFR-01 FAILS."
+        ),
         (
             "- The short curve meets the same threshold at the same user count, because it "
             "lasts a few seconds. Both readings are real: the burst measures the server, the "
@@ -303,6 +350,12 @@ def main() -> int:
     parser.add_argument("--users", type=int, default=NFR01_USERS)
     parser.add_argument("--token", default="")
     parser.add_argument(
+        "--think-ms",
+        type=float,
+        default=0.0,
+        help="pause between one user's requests (0 = saturation test, not an interactive model)",
+    )
+    parser.add_argument(
         "--render-existing",
         action="store_true",
         help="rewrite bench.md/soak.md from the committed json, without running load",
@@ -312,8 +365,10 @@ def main() -> int:
     if args.render_existing:
         bench_payload = json.loads((RESULTS / "bench.json").read_text(encoding="utf-8"))
         write_bench(bench_payload["rows"], bench_payload)
-        soak_path = RESULTS / "soak.json"
-        if soak_path.exists():
+        for name in ("soak.json", "soak-interactive.json"):
+            soak_path = RESULTS / name
+            if not soak_path.exists():
+                continue
             soak_payload = json.loads(soak_path.read_text(encoding="utf-8"))
             entry = next(
                 (item for item in bench_payload["rows"]
@@ -340,7 +395,17 @@ def main() -> int:
             contextlib.redirect_stdout(sink),
         ):
             row = soak(questions, db, seconds=args.soak_seconds, users=args.users,
-                       token=args.token)
+                       token=args.token, think_seconds=args.think_ms / 1000.0)
+        row["think_ms"] = args.think_ms
+        if args.think_ms:
+            ceiling = args.users / (args.think_ms / 1000.0)
+            if row["rps"] > ceiling * 1.15:
+                raise SystemExit(
+                    f"invalid run: {row['rps']:.1f} rps at {args.users} users with "
+                    f"{args.think_ms:.0f} ms think time, but the offered load cannot exceed "
+                    f"{ceiling:.1f} rps - the pause between a user's requests is not being "
+                    f"applied"
+                )
         bench_p95 = None
         bench_file = RESULTS / "bench.json"
         if bench_file.exists():

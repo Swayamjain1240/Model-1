@@ -185,8 +185,19 @@ def soak_panel() -> str:
         ["failures", f"{row['failures']} ({row['error_rate'] * 100:.3f}%)"],
         ["p95 ms", f"{row['p95_ms']:.2f}"],
         ["sustained rps", f"{row['rps']:.1f}"],
+        ["load model", "no think time (saturation)"],
     ]
-    return panel("Soak", "soak.json", table(["metric", "value"], rows))
+    # the interactive soak answers a different question; show both or quote neither
+    interactive = load("soak-interactive.json").get("row", {})
+    if interactive:
+        rows.insert(-1, ["p95 ms with 100 ms think", f"{interactive['p95_ms']:.2f}"])
+    note = (
+        "NFR-01 passes for user traffic and fails at saturation: the same ten users,\n"
+        "        offering ~4x the requests, build a queue a burst never sees."
+        if interactive
+        else ""
+    )
+    return panel("Soak", "soak.json", table(["metric", "value"], rows), note)
 
 
 def holdout_panel() -> str:
