@@ -79,6 +79,14 @@ def test_healthz_is_open_and_liveness(api):
     assert status == 200 and payload["status"] == "ok"
 
 
+def test_healthz_reports_the_gate_the_ui_must_draw(api):
+    """The page draws the refusal line from the running process, never from a copied number."""
+    _, payload = _get(f"{api}/v1/healthz", token=None)
+    assert payload["embedder"]
+    assert 0.0 < payload["theta"] < 1.0
+    assert payload["mode"] == "hybrid"
+
+
 def test_wrong_token_is_401_with_code(api):
     status, payload = _get(f"{api}/v1/ask?q=curfew", token="wrong")
     assert status == 401
@@ -109,6 +117,10 @@ def test_tenant_isolation_no_cross_tenant_leak(api):
 
 
 def test_demo_page_is_served_unauthenticated(api):
+    """The page is public and carries the two hooks the UI contract depends on."""
     with urllib.request.urlopen(f"{api}/", timeout=5) as response:
         assert response.status == 200
-        assert b"refuses to guess" in response.read()
+        body = response.read()
+        assert b'id="ask-form"' in body  # submits to /v1/ask
+        assert b"/v1/healthz" in body  # draws the refusal line from the running gate
+        assert b"grounded answer" in body

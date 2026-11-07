@@ -114,7 +114,16 @@ def make_handler(state: ServerState) -> type:
             self._json(200, payload)
 
         def _health(self) -> None:
-            self._json(200, {"status": "ok", "tenants_served": len(state.index._views)})
+            # theta and the encoder go out with liveness because the UI has to draw the
+            # refusal line at the threshold this process is actually running, not a
+            # number copied into the page from a report.
+            self._json(200, {
+                "status": "ok",
+                "tenants_served": len(state.index._views),
+                "embedder": state.settings.embedder_kind,
+                "theta": state.settings.theta,
+                "mode": "hybrid",
+            })
 
         def _demo(self) -> None:
             if not DEMO_PAGE.exists():
