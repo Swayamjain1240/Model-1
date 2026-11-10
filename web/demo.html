@@ -137,14 +137,18 @@
         'API unreachable — is the server running on this port?';
     });
 
-  function confidenceBlock(confidence) {
+  function confidenceBlock(confidence, reason) {
     const theta = API.theta;
     if (theta === null || typeof confidence !== 'number') return '';
     const pct = Math.max(0, Math.min(1, confidence)) * 100;
     const gate = Math.max(0, Math.min(1, theta)) * 100;
-    const verdict = confidence >= theta
-      ? `above the refusal line (${theta.toFixed(2)})`
-      : `below the refusal line (${theta.toFixed(2)})`;
+    // A refusal for unknown vocabulary can happen with confidence ABOVE the line, so the caption
+    // must not claim the score is the reason - that is the page lying about the API (M14).
+    const verdict = reason === 'unknown_terms'
+      ? 'above the refusal line, but refused: the corpus never mentions these words'
+      : confidence >= theta
+        ? `above the refusal line (${theta.toFixed(2)})`
+        : `below the refusal line (${theta.toFixed(2)})`;
     return `
       <div class="confidence">
         <div class="bar">
@@ -183,9 +187,13 @@
         <div class="card refused">
           <div class="verdict"><span class="tag stop">no grounded answer</span></div>
           <p class="answer">I don't have a policy passage that answers that, so I won't guess.</p>
-          ${confidenceBlock(data.confidence)}
-          <p class="note">Say it another way, or ask about attendance, exams, fees, hostel,
-            library, scholarships, internships or placements.</p>
+          ${confidenceBlock(data.confidence, data.refusal_reason)}
+          <p class="note">${
+            data.refusal_reason === 'unknown_terms' && data.unseen?.length
+              ? `The campus policy documents never mention: <strong>${data.unseen.map(esc).join(', ')}</strong>.`
+              : 'Say it another way, or ask about attendance, exams, fees, hostel, library, '
+                + 'scholarships, internships or placements.'
+          }</p>
           ${footer(data)}
         </div>`;
       return;

@@ -1,7 +1,8 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
 **Status: MVP and stage 2 complete except FR-11; two independent holdout sets say the refusal
-gate does not generalise (M11, replicated in M13).** M1–M6 built the measured MVP: corpus, hand-labeled
+gate does not generalise (M11, replicated in M13), and M14 added a second signal that recovers
+part of it: v3 refusal 0.50 → 0.67 with no answer lost, still open as FR-16.** M1–M6 built the measured MVP: corpus, hand-labeled
 question set, index layer (ingest, chunking, store, hybrid retrieval), the first **measured
 baseline** on the frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75), the **answer
 path** (extractive cited answers, safety-first refusal gate), the **HTTP API** (`GET /v1/ask`,
@@ -67,6 +68,18 @@ refusal accuracy 1.0000 on v1, 0.1667 on v2, **0.5000 on v3**, with the weakest 
 question at 0.322 against the strongest unanswerable one at 0.497 - overlapping, not separated.
 The best refusal accuracy any theta can reach on v3 is 0.83, and it costs answerable questions.
 So the v1 figure was in-sample, and the fix has to be a second signal rather than a threshold.
+
+M14 built that second signal. Confidence only ever inspects the passage it already chose; the
+new signal asks a different question - **does the tenant's corpus contain these words at all?**
+A request is refused when at least 50% of its content terms occur nowhere in the corpus and at
+least two of them do, with the floor fitted on v1 (the highest novelty among its answerable
+questions is 0.40) and the decision read off v3 (`results/support.md`). It moved refusal accuracy
+0.5000 → 0.6667 on v3 and 0.1667 → 0.3333 on v2 while refusing **no answerable question on any
+set**. That is one question on each six-question set: an improvement, not a repair. The two
+remaining failures have different causes and are named in the report - one is dilution by known
+words, the other is a question whose every word the corpus uses ("sports scholarship"), which no
+vocabulary check can refute. FR-16 therefore stays open, and the refusal now says which of the two
+reasons applied (`refusal_reason`, `unseen`).
 
 
 ---
@@ -172,6 +185,7 @@ src/atlas/
 ├── retrieval/learned.py             trained reranker + adoption gate (M8)
 ├── guard.py · breaker.py · obs.py   input guard · circuit breaker · log redaction (M9)
 ├── answer.py                        gate → extract → cite, or refuse (M4)
+├── support.py                       second refusal signal: vocabulary novelty (M14)
 ├── server.py                        /v1/ask JSON API, stdlib only (M5)
 └── cli.py                           ingest · ask · stats · serve
 tests/                                unit, contract and integration (pytest)
@@ -187,13 +201,13 @@ scripts/ci_gate_demo.py               proves the quality gate fails when it shou
 results/                              committed evidence: eval_report, calibration,
                                       fr11_diagnosis, ablation, latency, loadtest,
                                       robustness, embeddings, rerank, safety, bench,
-                                      soak, trace, ci_gate, handover
+                                      soak, trace, ci_gate, handover, holdout, support
 dashboard.html                        the dashboard: opens from disk, no server needed
 docs/
 ├── … 12 design documents (01–12) …
 ├── 13-handover-runbook.md           how to run, prove, and extend (M6)
 ├── 14-request-trace.md              the life of one request, with measured stages (M10)
-├── adr/                             six decision records, each with what it rejected (M10)
+├── adr/                             eight decision records, each with what it rejected (M10, M14)
 scripts/check_corpus.py               corpus gate
 scripts/check_limits.py               200-line ceiling gate
 .github/workflows/ci.yml              lint → size ceiling → tests → corpus → eval gate
@@ -218,8 +232,9 @@ curl "http://127.0.0.1:8070/v1/ask?q=What%20is%20the%20minimum%20attendance" \
 # or open http://127.0.0.1:8070/ for the page
 ```
 
-Every answer is a verbatim span with its citation or an explicit refusal (theta 0.13 gate);
-wrong-token requests get `401 AUTH_REQUIRED`; empty/stopword-only queries get
+Every answer is a verbatim span with its citation or an explicit refusal - below `theta`, or for
+a topic whose vocabulary the corpus does not carry (`refusal_reason` says which, and `unseen`
+names the words); wrong-token requests get `401 AUTH_REQUIRED`; empty/stopword-only queries get
 `400 INPUT_INVALID` (FR-19). The concurrent load test: start the server, then run
 `python -m bench.load_test --token mytoken` (results committed in `results/loadtest.md`).
 
@@ -227,7 +242,8 @@ The page (`web/demo.html`, no build step, no external assets) is the product sur
 box, the answer as a verbatim span, **the confidence drawn against the refusal line the running
 process actually uses** (read from `GET /v1/healthz`, so a hashed process shows 0.13 and a trained
 one 0.31), then the source document and text, then the stage timings and the trace id. A refusal
-is a red card that says so, with the same bar showing why it refused. Screenshots:
+is a red card that says so, with the same bar showing why it refused - and when the reason is
+unknown vocabulary rather than a low score, it says that instead of blaming the line. Screenshots:
 `docs/ui-answer.png`, `docs/ui-refusal.png`.
 
 Two limits the page cannot hide. There are no CORS headers, so the page has to be served by the
@@ -245,6 +261,7 @@ Every claim in this README comes from a target that rewrites a file in `results/
 | `make embed` | `results/embeddings.md` | encoder swap: dense recall@10 0.75 → 1.00, answer rate 0.29 → 0.96 |
 | `make ablation` | `results/ablation.md` | five configurations × two encoders, control arm, 95% Wilson intervals |
 | `make holdout` | `results/holdout.md` | two out-of-sample sets: recall holds at 1.0000, refusal accuracy 1.00 → 0.17 (v2) → 0.50 (v3) |
+| `make support` | `results/support.md` | second refusal signal: v3 refusal 0.50 → 0.67, v2 0.17 → 0.33, zero answers lost on any set |
 | `python -m eval.rerank_train` | `results/rerank.md` | trained reranker 0.90 held-out vs dense 1.00 → not adopted |
 | `make safety` | `results/safety.md` | 40/40 attacks refused, 0 tenant leaks, 0 PII in logs, 3/3 degraded |
 | `make bench` | `results/bench.md` | NFR-01 burst PASS: p95 43.25 ms at 10 users, 359 rps at 50 |

@@ -25,8 +25,11 @@ per-stage breakdown in `results/trace.md` (regenerate it with
    This is the shape that matters: retrieval returns *evidence and its own quality estimate*
    in one call, so the gate costs nothing extra.
 6. **Gate.** `confidence >= settings.theta`, with theta owned by the encoder's score scale
-   (`ADR-0004`). Failing the gate returns a refusal with the confidence attached, which is
-   what makes "why was I refused?" answerable without a debugger.
+   (`ADR-0004`), **and** the vocabulary check of `src/atlas/support.py` (M14, `ADR-0008`): a
+   request whose content terms are mostly absent from the corpus is refused even when the
+   score clears theta. Failing either returns a refusal with the confidence attached and a
+   `refusal_reason` (`low_confidence` / `unknown_terms` / `blocked`) plus the `unseen` terms,
+   which is what makes "why was I refused?" answerable without a debugger.
 7. **Extract.** Sentence selection from the winning passage only. No generation, so grounding
    is true by construction (`ADR-0003`).
 8. **Serialize.** Citations and timings assembled into the JSON body. `serialize_ms` is
