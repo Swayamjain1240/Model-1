@@ -234,6 +234,33 @@ def holdout_panel() -> str:
     )
 
 
+def support_panel() -> str:
+    """The second refusal signal: what it bought, and what it cost (M14)."""
+    report = load("support.json")
+    if not report:
+        return panel("Second refusal signal", "support.json", "<p class='missing'>not run</p>")
+    baseline = report.get("baseline", {})
+    adopted = report.get("adopted", {})
+    rows = [
+        [
+            label,
+            f"{baseline.get(label, {}).get('refusal_accuracy', 0):.3f}",
+            f"{adopted.get(label, {}).get('refusal_accuracy', 0):.3f}",
+            f"{baseline.get(label, {}).get('answer_rate', 0):.3f}",
+            f"{adopted.get(label, {}).get('answer_rate', 0):.3f}",
+        ]
+        for label in ("v1", "v2", "v3")
+    ]
+    computed = report.get("decision", {}).get("adopted")
+    return panel(
+        "Second refusal signal — vocabulary novelty (M14)", "support.json",
+        table(["set", "refusal before", "after", "answer before", "after"], rows),
+        f"floor {report.get('fitted_floor', 0):.2f} on unseen content terms; "
+        f"{'adopted' if computed else 'not adopted'}. n=6 unanswerable per set, so one question "
+        "moves a row by 0.167.",
+    )
+
+
 def handover_panel() -> str:
     report = load("handover.json")
     steps = report.get("steps", [])
@@ -260,6 +287,7 @@ def main() -> int:
         load_panel(),
         soak_panel(),
         holdout_panel(),
+        support_panel(),
     ]
     html = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
