@@ -7,7 +7,7 @@ VENV_PY ?= $(PY)
 # on a Windows checkout the venv interpreter is .venv/Scripts/python.exe;
 # on Unix .venv/bin/python - set VENV_PY accordingly when using venv targets.
 
-.PHONY: corpus limits test eval embed ablation holdout safety bench soak soak-interactive dashboard trace gate-demo check ci setup ingest serve handover
+.PHONY: corpus limits test eval embed ablation holdout support safety bench soak soak-interactive dashboard trace gate-demo check ci setup ingest serve handover
 
 corpus:
 	$(PY) scripts/check_corpus.py
@@ -32,6 +32,10 @@ ablation:
 # M11: out-of-sample set; fit on v1, decide on v2 (never the reverse)
 holdout:
 	$(PY) -m eval.holdout
+
+# M14: second refusal signal; floor fitted on v1, adopted only if v3 improves with no lost answers
+support:
+	$(PY) -m eval.support
 
 # stage-2 layer 2 (M9): injection suite, tenant probes, log audit, degraded mode
 safety:

@@ -1,0 +1,540 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "3574d4c",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "method": "The second refusal signal, measured (M14, FR-16).\n\nOne question, asked before the numbers were produced: does adding a *corpus-vocabulary* signal to\nthe confidence gate refuse more unanswerable questions without refusing answerable ones?\n\nThe rules, written down before the run:\n\n1. **Fit on v1.** The only tuned quantity is `floor`, the share of a question's *content* terms\n   (question words excluded) that the corpus must have never seen for the request to be refused\n   regardless of confidence. The fitted value is the smallest floor in the grid strictly above\n   the highest novelty observed among v1's answerable questions - the most aggressive floor that\n   still leaves every tuned-set answer untouched. Nothing else is tuned, and theta does not move.\n   The floor only ever *adds* a refusal, and only when at least `MIN_UNSEEN` (2) content terms are\n   unseen: one unused modifier is not a missing topic. Both rules are fixed before the run - the\n   first version of this measurement counted \"what\" and \"how\" as unknown words, which produced a\n   novelty score that was partly a count of pronouns; the report says so rather than hiding it.\n2. **Decide on v3.** v2 is reported as a replication; v3 is the set the decision is read from.\n3. **Adopt only if all four hold:** v3 refusal accuracy improves over the confidence-only\n   baseline, v3 answer rate does not fall, v2 answer rate does not fall, and v1 answer rate stays\n   at 1.0000. A signal that buys refusals with answers is not a signal, it is a threshold raise\n   with extra steps - which `results/holdout.md` already shows does not work.\n\nThe signal itself is in `src/atlas/support.py`; this file only measures it, and it does so from\nconfidences computed once, so every row of the floor grid is the same measurement re-bucketed.\n\nWrites `results/support.md` and `results/support.json`.",
+  "encoder": "potion-base-8M",
+  "theta": 0.31,
+  "vocabulary_size": 1027,
+  "fitted_floor": 0.5,
+  "fit": {
+    "rule": "smallest grid floor strictly above the highest novelty among v1 answerables",
+    "worst_v1_answerable_novelty": 0.4,
+    "eligible_floors": [
+      0.5,
+      0.6,
+      0.67,
+      0.75,
+      1.0
+    ]
+  },
+  "baseline": {
+    "v1": {
+      "answer_rate": 0.9583,
+      "refusal_accuracy": 1.0
+    },
+    "v2": {
+      "answer_rate": 0.9167,
+      "refusal_accuracy": 0.1667
+    },
+    "v3": {
+      "answer_rate": 1.0,
+      "refusal_accuracy": 0.5
+    }
+  },
+  "adopted": {
+    "v1": {
+      "answer_rate": 0.9583,
+      "refusal_accuracy": 1.0
+    },
+    "v2": {
+      "answer_rate": 0.9167,
+      "refusal_accuracy": 0.3333
+    },
+    "v3": {
+      "answer_rate": 1.0,
+      "refusal_accuracy": 0.6667
+    }
+  },
+  "grid": [
+    {
+      "floor": 0.33,
+      "v1": {
+        "answer_rate": 0.875,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 0.5
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.8333
+      }
+    },
+    {
+      "floor": 0.4,
+      "v1": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 0.3333
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.8333
+      }
+    },
+    {
+      "floor": 0.5,
+      "v1": {
+        "answer_rate": 0.9583,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 0.3333
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.6667
+      }
+    },
+    {
+      "floor": 0.6,
+      "v1": {
+        "answer_rate": 0.9583,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 0.1667
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5
+      }
+    },
+    {
+      "floor": 0.67,
+      "v1": {
+        "answer_rate": 0.9583,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 0.1667
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5
+      }
+    },
+    {
+      "floor": 0.75,
+      "v1": {
+        "answer_rate": 0.9583,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 0.1667
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5
+      }
+    },
+    {
+      "floor": 1.0,
+      "v1": {
+        "answer_rate": 0.9583,
+        "refusal_accuracy": 1.0
+      },
+      "v2": {
+        "answer_rate": 0.9167,
+        "refusal_accuracy": 0.1667
+      },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5
+      }
+    }
+  ],
+  "decision": {
+    "adopted": true,
+    "improves_v3_refusal": true,
+    "keeps_answer_rate": true
+  },
+  "novelty": {
+    "v1": {
+      "answerable": {
+        "min": 0.0,
+        "max": 0.4,
+        "mean": 0.1302
+      },
+      "unanswerable": {
+        "min": 0.1667,
+        "max": 0.6667,
+        "mean": 0.3778
+      }
+    },
+    "v2": {
+      "answerable": {
+        "min": 0.0,
+        "max": 0.1667,
+        "mean": 0.0315
+      },
+      "unanswerable": {
+        "min": 0.0,
+        "max": 0.5,
+        "mean": 0.2532
+      }
+    },
+    "v3": {
+      "answerable": {
+        "min": 0.0,
+        "max": 0.1667,
+        "mean": 0.0432
+      },
+      "unanswerable": {
+        "min": 0.0,
+        "max": 0.6,
+        "mean": 0.3798
+      }
+    }
+  },
+  "unseen_terms": {
+    "v1": {
+      "a001": [
+        "relaxation"
+      ],
+      "a002": [
+        "fell",
+        "five",
+        "relaxation",
+        "sixty"
+      ],
+      "a003": [
+        "keeping"
+      ],
+      "a004": [
+        "concession",
+        "someone"
+      ],
+      "a009": [
+        "sign"
+      ],
+      "a011": [
+        "erased",
+        "till"
+      ],
+      "a012": [
+        "different"
+      ],
+      "a013": [
+        "inside"
+      ],
+      "a016": [
+        "else",
+        "interview",
+        "someone"
+      ],
+      "a017": [
+        "better",
+        "job"
+      ],
+      "a018": [
+        "allowed"
+      ],
+      "a019": [
+        "finish"
+      ],
+      "a020": [
+        "lowest"
+      ],
+      "a021": [
+        "verify"
+      ],
+      "a023": [
+        "settled"
+      ],
+      "u001": [
+        "menu"
+      ],
+      "u002": [
+        "bus"
+      ],
+      "u003": [
+        "head",
+        "now"
+      ],
+      "u004": [
+        "password",
+        "wifi"
+      ],
+      "u005": [
+        "gym"
+      ],
+      "u006": [
+        "national",
+        "ranking"
+      ]
+    },
+    "v2": {
+      "v2-006": [
+        "weekly"
+      ],
+      "v2-007": [
+        "split"
+      ],
+      "v2-011": [
+        "money"
+      ],
+      "v2-u03": [
+        "professor",
+        "structure"
+      ],
+      "v2-u04": [
+        "accreditation",
+        "naac"
+      ],
+      "v2-u05": [
+        "degree",
+        "duplicate",
+        "graduating"
+      ],
+      "v2-u06": [
+        "cleaning",
+        "submitting"
+      ]
+    },
+    "v3": {
+      "v3-003": [
+        "allowed"
+      ],
+      "v3-005": [
+        "shortest"
+      ],
+      "v3-007": [
+        "wrong"
+      ],
+      "v3-012": [
+        "resolved"
+      ],
+      "v3-013": [
+        "fi",
+        "password",
+        "wi"
+      ],
+      "v3-014": [
+        "car",
+        "parking",
+        "permit"
+      ],
+      "v3-015": [
+        "gym",
+        "membership"
+      ],
+      "v3-016": [
+        "canteen"
+      ],
+      "v3-017": [
+        "duplicate",
+        "identity"
+      ]
+    }
+  },
+  "unanswerable_detail": {
+    "v1": [
+      {
+        "id": "u001",
+        "confidence": 0.2806,
+        "novelty": 0.2,
+        "unseen": [
+          "menu"
+        ],
+        "refused_by_confidence": true,
+        "refused_after": true
+      },
+      {
+        "id": "u002",
+        "confidence": 0.2725,
+        "novelty": 0.1667,
+        "unseen": [
+          "bus"
+        ],
+        "refused_by_confidence": true,
+        "refused_after": true
+      },
+      {
+        "id": "u003",
+        "confidence": 0.2805,
+        "novelty": 0.4,
+        "unseen": [
+          "head",
+          "now"
+        ],
+        "refused_by_confidence": true,
+        "refused_after": true
+      },
+      {
+        "id": "u004",
+        "confidence": 0.2177,
+        "novelty": 0.6667,
+        "unseen": [
+          "password",
+          "wifi"
+        ],
+        "refused_by_confidence": true,
+        "refused_after": true
+      },
+      {
+        "id": "u005",
+        "confidence": 0.2994,
+        "novelty": 0.3333,
+        "unseen": [
+          "gym"
+        ],
+        "refused_by_confidence": true,
+        "refused_after": true
+      },
+      {
+        "id": "u006",
+        "confidence": 0.2375,
+        "novelty": 0.5,
+        "unseen": [
+          "national",
+          "ranking"
+        ],
+        "refused_by_confidence": true,
+        "refused_after": true
+      }
+    ],
+    "v2": [
+      {
+        "id": "v2-u01",
+        "confidence": 0.4341,
+        "novelty": 0.0,
+        "unseen": [],
+        "refused_by_confidence": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-u02",
+        "confidence": 0.3342,
+        "novelty": 0.0,
+        "unseen": [],
+        "refused_by_confidence": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-u03",
+        "confidence": 0.3282,
+        "novelty": 0.2857,
+        "unseen": [
+          "professor",
+          "structure"
+        ],
+        "refused_by_confidence": false,
+        "refused_after": false
+      },
+      {
+        "id": "v2-u04",
+        "confidence": 0.2587,
+        "novelty": 0.4,
+        "unseen": [
+          "accreditation",
+          "naac"
+        ],
+        "refused_by_confidence": true,
+        "refused_after": true
+      },
+      {
+        "id": "v2-u05",
+        "confidence": 0.4065,
+        "novelty": 0.5,
+        "unseen": [
+          "degree",
+          "duplicate",
+          "graduating"
+        ],
+        "refused_by_confidence": false,
+        "refused_after": true
+      },
+      {
+        "id": "v2-u06",
+        "confidence": 0.4242,
+        "novelty": 0.3333,
+        "unseen": [
+          "cleaning",
+          "submitting"
+        ],
+        "refused_by_confidence": false,
+        "refused_after": false
+      }
+    ],
+    "v3": [
+      {
+        "id": "v3-013",
+        "confidence": 0.2233,
+        "novelty": 0.6,
+        "unseen": [
+          "fi",
+          "password",
+          "wi"
+        ],
+        "refused_by_confidence": true,
+        "refused_after": true
+      },
+      {
+        "id": "v3-014",
+        "confidence": 0.3404,
+        "novelty": 0.4286,
+        "unseen": [
+          "car",
+          "parking",
+          "permit"
+        ],
+        "refused_by_confidence": false,
+        "refused_after": false
+      },
+      {
+        "id": "v3-015",
+        "confidence": 0.2903,
+        "novelty": 0.5,
+        "unseen": [
+          "gym",
+          "membership"
+        ],
+        "refused_by_confidence": true,
+        "refused_after": true
+      },
+      {
+        "id": "v3-016",
+        "confidence": 0.3048,
+        "novelty": 0.25,
+        "unseen": [
+          "canteen"
+        ],
+        "refused_by_confidence": true,
+        "refused_after": true
+      },
+      {
+        "id": "v3-017",
+        "confidence": 0.313,
+        "novelty": 0.5,
+        "unseen": [
+          "duplicate",
+          "identity"
+        ],
+        "refused_by_confidence": false,
+        "refused_after": true
+      },
+      {
+        "id": "v3-018",
+        "confidence": 0.4965,
+        "novelty": 0.0,
+        "unseen": [],
+        "refused_by_confidence": false,
+        "refused_after": false
+      }
+    ]
+  }
+}
