@@ -1,8 +1,10 @@
-"""The v2 set and the theta table (M11).
+"""The appended holdout sets and the theta table (M11, M13).
 
 These tests guard the two cheap failure modes of a holdout: a label file that drifts from its
 own rules, and a theta table that silently stops being monotone (which would let a "sweep"
-report a threshold that answers more questions the higher it is set).
+report a threshold that answers more questions the higher it is set). The v3 tests add a third
+failure mode, the one that would waste the third set: a question reused from v1 or v2, which
+would make it look untouched while being anything but.
 """
 
 from __future__ import annotations
@@ -14,7 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT))
 
-from eval.holdout import V2_PATH, load_v2, theta_table  # noqa: E402
+from eval.holdout import V2_PATH, V3_PATH, load_v2, load_v3, theta_table  # noqa: E402
+
+SETS = (("v2", V2_PATH, load_v2), ("v3", V3_PATH, load_v3))
 
 GRID = (0.20, 0.25, 0.30, 0.31, 0.35, 0.40)
 
@@ -57,6 +61,40 @@ def test_v2_questions_are_not_duplicates_of_v1() -> None:
         assert row["query"].strip().lower() not in v1_queries, row["id"]
 
 
+def test_v3_set_keeps_its_shape() -> None:
+    """12 answerable and 6 unanswerable, its own id space, appended rather than edited in."""
+    answerable, unanswerable = load_v3()
+    assert len(answerable) == 12
+    assert len(unanswerable) == 6
+    assert all(row["id"].startswith("v3-") for row in answerable + unanswerable)
+    assert all(row["answerable"] for row in answerable)
+    assert not any(row["answerable"] for row in unanswerable)
+
+
+def test_v3_labels_name_documents_that_exist() -> None:
+    corpus = {path.stem for path in (ROOT / "corpus" / "campus").glob("*.md")}
+    answerable, _ = load_v3()
+    for row in answerable:
+        unknown = set(row["relevant_doc_ids"]) - corpus
+        assert not unknown, f"{row['id']} labels unknown documents: {sorted(unknown)}"
+
+
+def test_appended_sets_share_no_question() -> None:
+    """v3 has to be new questions: a reused query would be a claim of freshness it lacks."""
+    import json
+
+    seen: dict[str, str] = {}
+    paths = [ROOT / "eval" / "golden_set.jsonl"] + [path for _, path, _ in SETS]
+    for path in paths:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            key = row["query"].strip().lower()
+            assert key not in seen, f"{row['id']} repeats the question of {seen[key]}"
+            seen[key] = row["id"]
+
+
 def test_theta_table_is_monotone() -> None:
     """Raising theta can never answer more questions or refuse fewer."""
     profile = {
@@ -68,10 +106,14 @@ def test_theta_table_is_monotone() -> None:
             "answerable": [0.62, 0.41, 0.279],
             "unanswerable": [0.434, 0.33, 0.259],
         },
+        "v3": {
+            "answerable": [0.602, 0.48, 0.322],
+            "unanswerable": [0.497, 0.31, 0.223],
+        },
     }
     table = theta_table(profile, GRID)
     assert [row["theta"] for row in table] == list(GRID)
-    for label in ("v1", "v2"):
+    for label in ("v1", "v2", "v3"):
         answers = [row[label]["answer_rate"] for row in table]
         refusals = [row[label]["refusal_accuracy"] for row in table]
         assert answers == sorted(answers, reverse=True), label

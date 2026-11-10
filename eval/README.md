@@ -78,3 +78,28 @@ The rule for a holdout, written here before the numbers were produced:
 What v2 has already changed: the refusal gate's accuracy was **1.0000 on v1** and **0.1667 on
 v2**. That is reported in `README.md` and `results/holdout.md` as a failed generalisation, not
 tuned away.
+
+## v3, appended (M13) — because v2 has now been read
+
+`golden_set_v3.jsonl` appends 12 new answerable questions (`v3-0NN`) and 6 unanswerable ones
+(`v3-0NN`, ids 013-018). The reason is in the previous paragraph: v2's refusal failure is public,
+so tuning against v2 would be tuning against a set whose answers we already know. v3 was written
+from the corpus after that result was recorded, and its six unanswerable questions were chosen
+from topics the corpus does *not* cover (network passwords, parking, gym, canteen pricing,
+duplicate ID cards, sports scholarship) rather than from the failure mode we had just seen. Three
+of them are deliberately adjacent to covered ground, because an unanswerable question that shares
+no vocabulary with the corpus tests nothing.
+
+The rule extends, it does not change:
+
+- **Fit on v1, decide on v3.** v1 remains the only set anything is tuned on.
+- **v3 is read once per decision.** `results/holdout.md` prints every theta for all three sets;
+  the threshold still does not move, because moving it now would spend v3 and leave the next
+  claim untested.
+- **A v2 pass and a v3 pass must agree before anything is adopted.** Two sets that fail the same
+  way agree about the failure, which is what makes the M14 work targeted instead of exploratory.
+
+What v3 changed on its first read: refusal accuracy **0.5000** at the shipped theta (v1 1.0000,
+v2 0.1667), with answerable and unanswerable confidences still overlapping (0.322 vs 0.497). The
+failure replicates. That is the baseline M14 has to beat, and it was measured before any fix was
+designed.
