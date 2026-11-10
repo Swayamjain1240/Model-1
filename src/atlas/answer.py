@@ -20,6 +20,7 @@ from .config import SETTINGS, Settings
 from .guard import scan
 from .interfaces import Answer, Citation, DependencyError, InputError, Passage
 from .retrieval import HybridIndex
+from .support import novelty, refuses, unseen_terms
 from .text.tokenize import sentences, tokenize
 
 # One breaker per process: generation is a shared dependency, not a per-request one.
@@ -49,6 +50,7 @@ def answer_query(
             refused=True,
             mode="blocked",
             degraded=False,
+            refusal_reason="blocked",
             timings_ms={
                 "retrieve_ms": 0.0,
                 "gate_ms": _ms(time.perf_counter() - total_start),
@@ -63,13 +65,34 @@ def answer_query(
     retrieve_ms = (time.perf_counter() - retrieve_start) * 1000.0
     gate_start = time.perf_counter()
 
+    unseen: tuple[str, ...] = ()
+    refusal_reason = ""
     if report is not None:
         passage, parts = report
         confidence = round(parts["confidence"], 4)
         # theta follows the embedder's score scale (settings.theta), never a global
         gate_passes = confidence >= settings.theta
+        if not gate_passes:
+            refusal_reason = "low_confidence"
+        else:
+            # Second, independent signal (M14): confidence asks "does this passage match?",
+            # this asks "does the corpus contain these words at all?". Measured in
+            # results/support.md; the floor is 0.0 when the signal is disabled.
+            view = index.view(tenant_id)
+            vocabulary = view.vocabulary if view is not None else frozenset()
+            unseen = unseen_terms(query, vocabulary)
+            if refuses(
+                confidence=confidence,
+                theta=settings.theta,
+                novel=novelty(query, vocabulary),
+                unseen=len(unseen),
+                floor=settings.refusal_novelty_floor,
+            ):
+                gate_passes = False
+                refusal_reason = "unknown_terms"
     else:
         passage, confidence, gate_passes = None, 0.0, False
+        refusal_reason = "low_confidence"
     gate_ms = (time.perf_counter() - gate_start) * 1000.0
     timings = {
         "retrieve_ms": _ms(retrieve_ms),
@@ -88,6 +111,8 @@ def answer_query(
             degraded=False,
             timings_ms=timings,
             trace_id=trace_id,
+            refusal_reason=refusal_reason,
+            unseen=unseen,
         )
 
     extract_start = time.perf_counter()

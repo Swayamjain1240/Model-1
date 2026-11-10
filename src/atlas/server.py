@@ -101,6 +101,10 @@ def make_handler(state: ServerState) -> type:
                 ],
                 "mode": answer.mode,
                 "degraded": answer.degraded,
+                # "" when answered; otherwise why, so a client can say the true thing instead
+                # of blaming the threshold for a topic the corpus does not carry (M14).
+                "refusal_reason": answer.refusal_reason,
+                "unseen": list(answer.unseen),
                 "trace_id": answer.trace_id,
                 "timings": {
                     **answer.timings_ms,

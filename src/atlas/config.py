@@ -74,6 +74,13 @@ class Settings:
     # calibrated knee (results/embeddings.md, M7). Sharing one number across two
     # embedders would silently compare two different rulers.
     confidence_theta_trained: float = 0.31
+
+    # Second refusal signal (M14, results/support.md): refuse when at least this share of the
+    # question's content terms occurs nowhere in the tenant's corpus, and at least two of them
+    # do. Fitted on v1 (the highest novelty among its answerable questions is 0.40, so 0.50 is
+    # the tightest floor that refuses none of them) and judged on v3, where it moved refusal
+    # accuracy 0.5000 -> 0.6667 without refusing a single answerable question. 0.0 disables it.
+    refusal_novelty_floor: float = 0.50
     theta_candidates_trained: tuple[float, ...] = (
         0.20,
         0.25,

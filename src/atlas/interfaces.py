@@ -71,6 +71,11 @@ class Answer:
     degraded: bool
     timings_ms: dict[str, float]
     trace_id: str
+    # Why a refusal happened, so a caller can tell "not close enough" from "the corpus never
+    # mentions this" - two facts that deserve different words in a UI (M14, FR-16).
+    # "" when answered, else "low_confidence" or "unknown_terms".
+    refusal_reason: str = ""
+    unseen: tuple[str, ...] = ()
 
 
 @runtime_checkable

@@ -101,6 +101,8 @@ class _TenantView:
         self._embedder = build_embedder(settings.embedder_kind, self._sparse.idf, settings=settings)
         self._matrix = self._embedder.embed(texts)
         self._reranker = build_reranker(self._sparse.idf, settings=settings)
+        # The idf keys ARE the seen vocabulary: BM25 only stores terms some chunk contains (M14).
+        self.vocabulary = frozenset(self._sparse.idf)
         # M5 perf: chunk features are immutable per view, so cache them once and the
         # reranker stops re-tokenising candidate text on every search (load-test finding)
         features: dict[int, tuple] = {}
@@ -109,9 +111,8 @@ class _TenantView:
             tokens = set(ordered)
             features[idx] = (
                 tokens,
-                # bigrams of a *set* depend on iteration order, which is hash-salted per
-                # process: that made rankings differ between identical runs (found by the
-                # M10 reproducibility check). Pairs come from the ordered tokens.
+                # bigrams of a *set* are hash-salted per process, which made identical runs
+                # rank differently (M10 reproducibility check); order them from the tokens.
                 set(bigrams(ordered)),
                 set(tokenize(chunk.title)),
                 set(tokenize(chunk.section)),
