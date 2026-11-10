@@ -3,10 +3,10 @@
     "platform": "Windows-11-10.0.26300-SP0",
     "python": "3.12.10",
     "corpus": "corpus/campus (18 documents, frozen at M1)",
-    "commit": "ce5cb5f",
+    "commit": "409b030",
     "regenerate_with": "python -m eval.run_eval"
   },
-  "method": "The out-of-sample test FR-11 and the refusal gate needed (M11).\n\nEvery number in `results/ablation.md` and `results/eval_report.md` was measured on the same\n24+6 questions the design was tuned against, so answers like \"refusal accuracy 1.00\" were\nin-sample claims. This harness adds a second, appended set - `eval/golden_set_v2.jsonl`,\n12 answerable and 6 unanswerable questions written after the code was frozen - and uses it\nthe only way a holdout is useful:\n\n    fit on v1, decide on v2.\n\nThree questions are answered here:\n\n1. **Does retrieval generalise?** The five configurations are scored on both sets.\n2. **Does the confidence gate generalise?** Answer rate and refusal accuracy are computed at\n   every theta in the shipped grid for both sets, from confidences measured once.\n3. **Can fusion weights close FR-11?** A small grid of sparse/dense weights is scored on v1\n   only; the best-on-v1 setting is then evaluated on v2 and adopted only if both agree.\n\nThe v1 set is never edited: v2 is a separate file with its own ids. Nothing was chosen by\nlooking at v2, including theta - that is the whole point.\n\nWrites `results/holdout.md` and `results/holdout.json`.",
+  "method": "The out-of-sample test FR-11 and the refusal gate needed (M11).\n\nEvery number in `results/ablation.md` and `results/eval_report.md` was measured on the same\n24+6 questions the design was tuned against, so answers like \"refusal accuracy 1.00\" were\nin-sample claims. This harness adds a second, appended set - `eval/golden_set_v2.jsonl`,\n12 answerable and 6 unanswerable questions written after the code was frozen - and uses it\nthe only way a holdout is useful:\n\n    fit on v1, decide on v2.\n\nThree questions are answered here:\n\n1. **Does retrieval generalise?** The five configurations are scored on both sets.\n2. **Does the confidence gate generalise?** Answer rate and refusal accuracy are computed at\n   every theta in the shipped grid for both sets, from confidences measured once.\n3. **Can fusion weights close FR-11?** A small grid of sparse/dense weights is scored on v1\n   only; the best-on-v1 setting is then evaluated on v2 and adopted only if both agree.\n\nThe v1 set is never edited: v2 is a separate file with its own ids. Nothing was chosen by\nlooking at v2, including theta - that is the whole point.\n\n**M13 appends a third set, `eval/golden_set_v3.jsonl`** (12 answerable, 6 unanswerable), because\nv2 has now been read: its refusal failure is public, so tuning against it would be tuning on a\nset whose answers we already know. v3 is written from the corpus after the v2 result was\nrecorded and is scored here for the first time. From M13 onward the decisions in this report are\nread off **v3**, with v1 and v2 kept as the two earlier readings - a fix that only moves v1 and\nv2 is not a fix, and a set that is only ever read once has to stay unread until it is.\n\nOne caveat stated before the numbers: v3 is written by the same person who wrote the code, so it\nis a weaker holdout than a set written by a stranger. It still catches the failure that matters\nhere - a threshold fitted to six questions - because its unanswerable questions were chosen from\ntopics the corpus does not cover, not from the failure mode already known.\n\nWrites `results/holdout.md` and `results/holdout.json`.",
   "encoder": "potion-base-8M",
   "sets": {
     "v1": {
@@ -14,6 +14,10 @@
       "unanswerable": 6
     },
     "v2": {
+      "answerable": 12,
+      "unanswerable": 6
+    },
+    "v3": {
       "answerable": 12,
       "unanswerable": 6
     }
@@ -75,6 +79,33 @@
           "ci_high": 0.9851
         },
         "missed_questions": []
+      },
+      "v3": {
+        "recall": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "precision5c": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "ndcg": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "mrr": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "missed_questions": []
       }
     },
     "dense": {
@@ -129,6 +160,33 @@
           "mean": 1.0,
           "ci_low": 0.7575,
           "ci_high": 1.0
+        },
+        "missed_questions": []
+      },
+      "v3": {
+        "recall": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "precision5c": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "ndcg": {
+          "n": 12,
+          "mean": 0.9692,
+          "ci_low": 0.7134,
+          "ci_high": 0.9975
+        },
+        "mrr": {
+          "n": 12,
+          "mean": 0.9583,
+          "ci_low": 0.6987,
+          "ci_high": 0.9956
         },
         "missed_questions": []
       }
@@ -187,6 +245,33 @@
           "mean": 1.0,
           "ci_low": 0.7575,
           "ci_high": 1.0
+        },
+        "missed_questions": []
+      },
+      "v3": {
+        "recall": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "precision5c": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "ndcg": {
+          "n": 12,
+          "mean": 0.9692,
+          "ci_low": 0.7134,
+          "ci_high": 0.9975
+        },
+        "mrr": {
+          "n": 12,
+          "mean": 0.9583,
+          "ci_low": 0.6987,
+          "ci_high": 0.9956
         },
         "missed_questions": []
       }
@@ -248,6 +333,33 @@
           "ci_high": 0.9851
         },
         "missed_questions": []
+      },
+      "v3": {
+        "recall": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "precision5c": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "ndcg": {
+          "n": 12,
+          "mean": 0.9692,
+          "ci_low": 0.7134,
+          "ci_high": 0.9975
+        },
+        "mrr": {
+          "n": 12,
+          "mean": 0.9583,
+          "ci_low": 0.6987,
+          "ci_high": 0.9956
+        },
+        "missed_questions": []
       }
     },
     "hybrid + learned": {
@@ -306,6 +418,33 @@
           "ci_high": 0.9851
         },
         "missed_questions": []
+      },
+      "v3": {
+        "recall": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "precision5c": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "ndcg": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "mrr": {
+          "n": 12,
+          "mean": 1.0,
+          "ci_low": 0.7575,
+          "ci_high": 1.0
+        },
+        "missed_questions": []
       }
     }
   },
@@ -320,6 +459,10 @@
         "answer_rate": 0.9167,
         "refusal_accuracy": 0.1667
       },
+      "v3": {
+        "answer_rate": 1.0,
+        "refusal_accuracy": 0.5
+      },
       "theta": 0.31
     },
     "theta_table": [
@@ -330,6 +473,10 @@
           "refusal_accuracy": 0.0
         },
         "v2": {
+          "answer_rate": 1.0,
+          "refusal_accuracy": 0.0
+        },
+        "v3": {
           "answer_rate": 1.0,
           "refusal_accuracy": 0.0
         }
@@ -343,6 +490,10 @@
         "v2": {
           "answer_rate": 1.0,
           "refusal_accuracy": 0.0
+        },
+        "v3": {
+          "answer_rate": 1.0,
+          "refusal_accuracy": 0.1667
         }
       },
       {
@@ -353,6 +504,10 @@
         },
         "v2": {
           "answer_rate": 0.9167,
+          "refusal_accuracy": 0.1667
+        },
+        "v3": {
+          "answer_rate": 1.0,
           "refusal_accuracy": 0.1667
         }
       },
@@ -365,6 +520,10 @@
         "v2": {
           "answer_rate": 0.9167,
           "refusal_accuracy": 0.1667
+        },
+        "v3": {
+          "answer_rate": 1.0,
+          "refusal_accuracy": 0.3333
         }
       },
       {
@@ -376,6 +535,10 @@
         "v2": {
           "answer_rate": 0.9167,
           "refusal_accuracy": 0.1667
+        },
+        "v3": {
+          "answer_rate": 1.0,
+          "refusal_accuracy": 0.5
         }
       },
       {
@@ -387,6 +550,10 @@
         "v2": {
           "answer_rate": 0.9167,
           "refusal_accuracy": 0.3333
+        },
+        "v3": {
+          "answer_rate": 0.9167,
+          "refusal_accuracy": 0.6667
         }
       },
       {
@@ -398,6 +565,10 @@
         "v2": {
           "answer_rate": 0.9167,
           "refusal_accuracy": 0.5
+        },
+        "v3": {
+          "answer_rate": 0.9167,
+          "refusal_accuracy": 0.8333
         }
       },
       {
@@ -409,6 +580,10 @@
         "v2": {
           "answer_rate": 0.9167,
           "refusal_accuracy": 0.5
+        },
+        "v3": {
+          "answer_rate": 0.8333,
+          "refusal_accuracy": 0.8333
         }
       },
       {
@@ -420,6 +595,10 @@
         "v2": {
           "answer_rate": 0.9167,
           "refusal_accuracy": 0.5
+        },
+        "v3": {
+          "answer_rate": 0.8333,
+          "refusal_accuracy": 0.8333
         }
       }
     ],
@@ -447,6 +626,18 @@
           "max": 0.434,
           "mean": 0.364
         }
+      },
+      "v3": {
+        "answerable": {
+          "min": 0.322,
+          "max": 0.602,
+          "mean": 0.486
+        },
+        "unanswerable": {
+          "min": 0.223,
+          "max": 0.497,
+          "mean": 0.328
+        }
       }
     }
   },
@@ -465,6 +656,12 @@
         "mean": 1.0,
         "ci_low": 0.7575,
         "ci_high": 1.0
+      },
+      "v3": {
+        "n": 12,
+        "mean": 1.0,
+        "ci_low": 0.7575,
+        "ci_high": 1.0
       }
     },
     {
@@ -477,6 +674,12 @@
         "ci_high": 0.9768
       },
       "v2": {
+        "n": 12,
+        "mean": 1.0,
+        "ci_low": 0.7575,
+        "ci_high": 1.0
+      },
+      "v3": {
         "n": 12,
         "mean": 1.0,
         "ci_low": 0.7575,
@@ -497,6 +700,12 @@
         "mean": 1.0,
         "ci_low": 0.7575,
         "ci_high": 1.0
+      },
+      "v3": {
+        "n": 12,
+        "mean": 1.0,
+        "ci_low": 0.7575,
+        "ci_high": 1.0
       }
     },
     {
@@ -509,6 +718,12 @@
         "ci_high": 0.9768
       },
       "v2": {
+        "n": 12,
+        "mean": 1.0,
+        "ci_low": 0.7575,
+        "ci_high": 1.0
+      },
+      "v3": {
         "n": 12,
         "mean": 1.0,
         "ci_low": 0.7575,
@@ -529,6 +744,12 @@
         "mean": 1.0,
         "ci_low": 0.7575,
         "ci_high": 1.0
+      },
+      "v3": {
+        "n": 12,
+        "mean": 1.0,
+        "ci_low": 0.7575,
+        "ci_high": 1.0
       }
     },
     {
@@ -545,12 +766,20 @@
         "mean": 1.0,
         "ci_low": 0.7575,
         "ci_high": 1.0
+      },
+      "v3": {
+        "n": 12,
+        "mean": 1.0,
+        "ci_low": 0.7575,
+        "ci_high": 1.0
       }
     }
   ],
   "decision": {
     "shipped_v1": 0.9167,
     "shipped_v2": 1.0,
+    "shipped_v3": 1.0,
+    "decided_on": "v3",
     "best_on_v1": {
       "sparse_weight": 1.0,
       "dense_weight": 0.5,
@@ -562,7 +791,11 @@
     "weights_tied": true,
     "fr11_met_on_v2": true,
     "fr11_gap_on_v2": 0.0,
+    "fr11_met_on_v3": true,
+    "fr11_gap_on_v3": 0.0,
     "refusal_generalises": false,
-    "best_v2_refusal_across_thetas": 0.5
+    "refusal_generalises_on_v2": false,
+    "best_v2_refusal_across_thetas": 0.5,
+    "best_v3_refusal_across_thetas": 0.8333
   }
 }

@@ -19,6 +19,18 @@ Three questions are answered here:
 The v1 set is never edited: v2 is a separate file with its own ids. Nothing was chosen by
 looking at v2, including theta - that is the whole point.
 
+**M13 appends a third set, `eval/golden_set_v3.jsonl`** (12 answerable, 6 unanswerable), because
+v2 has now been read: its refusal failure is public, so tuning against it would be tuning on a
+set whose answers we already know. v3 is written from the corpus after the v2 result was
+recorded and is scored here for the first time. From M13 onward the decisions in this report are
+read off **v3**, with v1 and v2 kept as the two earlier readings - a fix that only moves v1 and
+v2 is not a fix, and a set that is only ever read once has to stay unread until it is.
+
+One caveat stated before the numbers: v3 is written by the same person who wrote the code, so it
+is a weaker holdout than a set written by a stranger. It still catches the failure that matters
+here - a threshold fitted to six questions - because its unanswerable questions were chosen from
+topics the corpus does not cover, not from the failure mode already known.
+
 Writes `results/holdout.md` and `results/holdout.json`.
 """
 
@@ -44,6 +56,8 @@ from eval.run_eval import (  # noqa: E402
 )
 
 V2_PATH = ROOT / "eval" / "golden_set_v2.jsonl"
+V3_PATH = ROOT / "eval" / "golden_set_v3.jsonl"
+SET_LABELS = ("v1", "v2", "v3")
 ENCODER = "potion-base-8M"  # the shipped encoder; the hashed stand-in is in results/ablation.md
 
 CONFIGS = (
@@ -58,11 +72,11 @@ FUSION = "hybrid (fusion only)"
 WEIGHT_GRID = ((1.0, 1.0), (1.5, 1.0), (2.0, 1.0), (1.0, 0.5), (1.0, 1.5), (1.5, 0.5))
 
 
-def load_v2() -> tuple[list[dict], list[dict]]:
-    """The appended set, validated on read so a malformed label cannot pass silently."""
+def load_set(path: Path, tag: str) -> tuple[list[dict], list[dict]]:
+    """One appended set, validated on read so a malformed label cannot pass silently."""
     rows = [
         json.loads(line)
-        for line in V2_PATH.read_text(encoding="utf-8").splitlines()
+        for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
     for row in rows:
@@ -72,9 +86,17 @@ def load_v2() -> tuple[list[dict], list[dict]]:
         else:
             assert not row["relevant_doc_ids"], f"{row['id']} is unanswerable but labelled"
     ids = [row["id"] for row in rows]
-    assert len(ids) == len(set(ids)), "duplicate id in v2"
+    assert len(ids) == len(set(ids)), f"duplicate id in {tag}"
     answerable = [row for row in rows if row["answerable"]]
     return answerable, [row for row in rows if not row["answerable"]]
+
+
+def load_v2() -> tuple[list[dict], list[dict]]:
+    return load_set(V2_PATH, "v2")
+
+
+def load_v3() -> tuple[list[dict], list[dict]]:
+    return load_set(V3_PATH, "v3")
 
 
 def measure(store, mode: str, overrides: dict, questions: list[dict]) -> dict:
@@ -145,20 +167,27 @@ def theta_table(profile: dict, grid: tuple[float, ...]) -> list[dict]:
 def main() -> int:
     v1_answerable, v1_unanswerable = load_questions()
     v2_answerable, v2_unanswerable = load_v2()
+    v3_answerable, v3_unanswerable = load_v3()
+    sets = {
+        "v1": (v1_answerable, v1_unanswerable),
+        "v2": (v2_answerable, v2_unanswerable),
+        "v3": (v3_answerable, v3_unanswerable),
+    }
     store = build_store(SETTINGS.default_tenant)
     try:
         results = {
             name: {
-                "v1": measure(store, mode, overrides, v1_answerable),
-                "v2": measure(store, mode, overrides, v2_answerable),
+                label: measure(store, mode, overrides, sets[label][0])
+                for label in SET_LABELS
             }
             for name, mode, overrides in CONFIGS
         }
         profile = {
-            "v1": {"answerable": confidences(store, v1_answerable),
-                   "unanswerable": confidences(store, v1_unanswerable)},
-            "v2": {"answerable": confidences(store, v2_answerable),
-                   "unanswerable": confidences(store, v2_unanswerable)},
+            label: {
+                "answerable": confidences(store, sets[label][0]),
+                "unanswerable": confidences(store, sets[label][1]),
+            }
+            for label in SET_LABELS
         }
         grid = [
             {
@@ -176,6 +205,12 @@ def main() -> int:
                      "rrf_weight_dense": dense_w},
                     v2_answerable,
                 )["recall"],
+                "v3": measure(
+                    store, "hybrid",
+                    {"rerank_kind": "blend", "rrf_weight_sparse": sparse_w,
+                     "rrf_weight_dense": dense_w},
+                    v3_answerable,
+                )["recall"],
             }
             for sparse_w, dense_w in WEIGHT_GRID
         ]
@@ -189,12 +224,13 @@ def main() -> int:
     shipped = {
         label: {"answer_rate": shipped_row[label]["answer_rate"],
                 "refusal_accuracy": shipped_row[label]["refusal_accuracy"]}
-        for label in ("v1", "v2")
+        for label in SET_LABELS
     }
     shipped["theta"] = theta
 
     shipped_v1 = results[SHIPPED]["v1"]["recall"]["mean"]
     shipped_v2 = results[SHIPPED]["v2"]["recall"]["mean"]
+    shipped_v3 = results[SHIPPED]["v3"]["recall"]["mean"]
     best_v1 = max(
         grid,
         key=lambda row: (row["v1"]["mean"], -(row["sparse_weight"] + row["dense_weight"])),
@@ -202,18 +238,23 @@ def main() -> int:
     dense_v2 = results["dense"]["v2"]["recall"]["mean"]
     sparse_v2 = results["sparse"]["v2"]["recall"]["mean"]
     fusion_v2 = results[FUSION]["v2"]["recall"]["mean"]
+    dense_v3 = results["dense"]["v3"]["recall"]["mean"]
+    sparse_v3 = results["sparse"]["v3"]["recall"]["mean"]
+    fusion_v3 = results[FUSION]["v3"]["recall"]["mean"]
 
-    # Adoption rule, stated before the numbers are read: no v1 loss AND a v2 gain.
-    weight_adopted = best_v1["v1"]["mean"] >= shipped_v1 and best_v1["v2"]["mean"] > shipped_v2
+    # Adoption rule, stated before the numbers are read: no v1 loss AND a v3 gain.
+    # v1 is still what the best setting is chosen on; v3 is what decides whether it ships.
+    weight_adopted = best_v1["v1"]["mean"] >= shipped_v1 and best_v1["v3"]["mean"] > shipped_v3
     weight_tied = len({round(row["v1"]["mean"], 6) for row in grid}) == 1
     v2_refusal_best = max(row["v2"]["refusal_accuracy"] for row in table)
+    v3_refusal_best = max(row["v3"]["refusal_accuracy"] for row in table)
     payload = {
         "provenance": provenance(),
         "method": (__doc__ or "").strip(),
         "encoder": ENCODER,
         "sets": {
-            "v1": {"answerable": len(v1_answerable), "unanswerable": len(v1_unanswerable)},
-            "v2": {"answerable": len(v2_answerable), "unanswerable": len(v2_unanswerable)},
+            label: {"answerable": len(sets[label][0]), "unanswerable": len(sets[label][1])}
+            for label in SET_LABELS
         },
         "configs": results,
         "confidence": {
@@ -227,6 +268,8 @@ def main() -> int:
         "decision": {
             "shipped_v1": shipped_v1,
             "shipped_v2": shipped_v2,
+            "shipped_v3": shipped_v3,
+            "decided_on": "v3",
             "best_on_v1": {
                 "sparse_weight": best_v1["sparse_weight"],
                 "dense_weight": best_v1["dense_weight"],
@@ -238,8 +281,12 @@ def main() -> int:
             "weights_tied": weight_tied,
             "fr11_met_on_v2": fusion_v2 >= max(dense_v2, sparse_v2),
             "fr11_gap_on_v2": round(fusion_v2 - max(dense_v2, sparse_v2), 4),
-            "refusal_generalises": shipped["v2"]["refusal_accuracy"] >= 0.8,
+            "fr11_met_on_v3": fusion_v3 >= max(dense_v3, sparse_v3),
+            "fr11_gap_on_v3": round(fusion_v3 - max(dense_v3, sparse_v3), 4),
+            "refusal_generalises": shipped["v3"]["refusal_accuracy"] >= 0.8,
+            "refusal_generalises_on_v2": shipped["v2"]["refusal_accuracy"] >= 0.8,
             "best_v2_refusal_across_thetas": v2_refusal_best,
+            "best_v3_refusal_across_thetas": v3_refusal_best,
         },
     }
     (RESULTS / "holdout.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -250,33 +297,40 @@ def main() -> int:
         f"Encoder `{ENCODER}`. v1 is the frozen 24+6 set every earlier number used; v2 is an",
         "appended 12+6 set written after the code was frozen, with its own ids. Nothing in v1",
         "was edited, and no v2 question was used to choose a weight, a threshold or a ranker.",
+        "v3 is the second appended set (12+6, M13), written after the v2 refusal failure was",
+        "already known and scored here for the first time. **Decisions below are read off v3.**",
         "",
-        "## Retrieval, both sets, same configurations",
+        "## Retrieval, all three sets, same configurations",
         "",
-        "| configuration | v1 recall@10 (95% CI) | v2 recall@10 (95% CI) "
-        "| v2 p@5 capped | v2 MRR |",
-        "|---|---|---|---|---|",
+        "| configuration | v1 recall@10 (95% CI) | v2 recall@10 | v3 recall@10 "
+        "| v3 p@5 capped | v3 MRR |",
+        "|---|---|---|---|---|---|",
     ]
     for name, block in results.items():
-        one, two = block["v1"]["recall"], block["v2"]["recall"]
+        one, two, three = block["v1"]["recall"], block["v2"]["recall"], block["v3"]["recall"]
         lines.append(
             f"| {name} | {one['mean']:.4f} [{one['ci_low']:.3f}, {one['ci_high']:.3f}] "
-            f"| {two['mean']:.4f} [{two['ci_low']:.3f}, {two['ci_high']:.3f}] "
-            f"| {block['v2']['precision5c']['mean']:.4f} | {block['v2']['mrr']['mean']:.4f} |"
+            f"| {two['mean']:.4f} | {three['mean']:.4f} "
+            f"| {block['v3']['precision5c']['mean']:.4f} | {block['v3']['mrr']['mean']:.4f} |"
         )
+    v2_reaches = [block["v2"]["recall"]["mean"] for block in results.values()]
+    v3_reaches = [block["v3"]["recall"]["mean"] for block in results.values()]
     lines += [
         "",
-        "Recall on v2 is 1.0000 for four of the five configurations, so this set cannot",
-        "discriminate rankers: its questions are short, factual and single-document, which is",
-        "exactly the traffic the system handles well. A holdout that saturates says nothing",
-        "about which ranker is better - only that none of them misses a relevant document.",
+        f"{sum(1 for value in v2_reaches if value == 1.0)} of five configurations reach 1.0000 on",
+        f"v2, {sum(1 for value in v3_reaches if value == 1.0)} of five on v3, so both appended",
+        "sets",
+        "are saturated: they say only that no configuration misses a relevant document on",
+        "questions like these, which are short, factual and single-document - exactly the traffic",
+        "this corpus produces. Neither set can rank the rankers. Their teeth are in the gate, and",
+        "that is where both earn their place.",
         "",
         "## The gate on the new set: answer rate and refusal accuracy",
         "",
         "| set | theta | answer rate | refusal accuracy | n answerable | n unanswerable |",
         "|---|---|---|---|---|---|",
     ]
-    for label in ("v1", "v2"):
+    for label in SET_LABELS:
         block = shipped[label]
         n_a = payload["sets"][label]["answerable"]
         n_u = payload["sets"][label]["unanswerable"]
@@ -308,15 +362,23 @@ def main() -> int:
         "the two classes, and across the whole grid the best v2 refusal accuracy reachable is",
         f"{v2_refusal_best:.4f} - at the cost of refusing questions the system can answer.",
         "",
-        "| theta | v1 answer | v1 refusal | v2 answer | v2 refusal |",
-        "|---|---|---|---|---|",
+        "v3 repeats the pattern with different numbers, which is what makes it a replication and",
+        "not an anecdote: the weakest answerable question scores",
+        f"{spreads['v3']['answerable']['min']:.3f}, the strongest unanswerable one",
+        f"{spreads['v3']['unanswerable']['max']:.3f}, and the best refusal accuracy any theta can",
+        f"reach is {v3_refusal_best:.4f}. The classes overlap on confidence in all three sets;",
+        "the first set only looked separable because six questions happened to be easy to refuse.",
+        "",
+        "| theta | v1 answer | v1 refusal | v2 answer | v2 refusal | v3 answer | v3 refusal |",
+        "|---|---|---|---|---|---|---|",
     ]
     for row in table:
         marker = " (shipped)" if abs(row["theta"] - theta) < 1e-9 else ""
         lines.append(
             f"| {row['theta']:.2f}{marker} | {row['v1']['answer_rate']:.4f} "
             f"| {row['v1']['refusal_accuracy']:.4f} | {row['v2']['answer_rate']:.4f} "
-            f"| {row['v2']['refusal_accuracy']:.4f} |"
+            f"| {row['v2']['refusal_accuracy']:.4f} | {row['v3']['answer_rate']:.4f} "
+            f"| {row['v3']['refusal_accuracy']:.4f} |"
         )
     lines += [
         "",
@@ -325,23 +387,25 @@ def main() -> int:
         "this set exists to prevent. The requirement stays open in `README.md` with these",
         "numbers attached.",
         "",
-        "## Fusion weights: fitted on v1, judged on v2",
+        "## Fusion weights: fitted on v1, judged on v3",
         "",
-        "| sparse weight | dense weight | v1 recall@10 | v2 recall@10 |",
-        "|---|---|---|---|",
+        "| sparse weight | dense weight | v1 recall@10 | v2 recall@10 | v3 recall@10 |",
+        "|---|---|---|---|---|",
     ]
     for row in grid:
         lines.append(
             f"| {row['sparse_weight']:.1f} | {row['dense_weight']:.1f} "
-            f"| {row['v1']['mean']:.4f} | {row['v2']['mean']:.4f} |"
+            f"| {row['v1']['mean']:.4f} | {row['v2']['mean']:.4f} "
+            f"| {row['v3']['mean']:.4f} |"
         )
     lines += [
         "",
         "## Decisions",
         "",
         "- **Fusion weights:** "
-        + (f"all six settings score identically on both sets (v1 {shipped_v1:.4f}, v2 "
-           f"{shipped_v2:.4f}), so this evaluation cannot identify a weight at all: fusion "
+        + (f"all six settings score identically on all three sets (v1 {shipped_v1:.4f}, v2 "
+           f"{shipped_v2:.4f}, v3 {shipped_v3:.4f}), so this evaluation cannot identify a weight "
+           "at all: fusion "
            "re-orders the same chunks whichever weight is used. **Nothing adopted.** The grid "
            "is kept as evidence that the knob is inert on a corpus this small, not as a "
            "tuned value."
@@ -362,29 +426,44 @@ def main() -> int:
            if payload["decision"]["fr11_met_on_v2"] else
            "The requirement is still not met on v2."),
         f"- **Refusal generalises:** "
-        f"{'yes' if payload['decision']['refusal_generalises'] else 'no'} - "
-        f"v1 refusal accuracy {shipped['v1']['refusal_accuracy']:.4f} against v2 "
-        f"{shipped['v2']['refusal_accuracy']:.4f}. The earlier figure was in-sample.",
+        f"{'yes' if payload['decision']['refusal_generalises'] else 'no'} on v3 - "
+        f"refusal accuracy {shipped['v1']['refusal_accuracy']:.4f} on v1, "
+        f"{shipped['v2']['refusal_accuracy']:.4f} on v2, "
+        f"{shipped['v3']['refusal_accuracy']:.4f} on v3. Two independent appended sets agree, so",
+        "the v1 figure was in-sample and the gate is the open requirement, not a rounding problem.",
+        f"- **FR-11 on v3:** fusion-only {fusion_v3:.4f} against dense {dense_v3:.4f} and sparse "
+        f"{sparse_v3:.4f} ({fusion_v3 - max(dense_v3, sparse_v3):+.4f}). "
+        + ("Met on v3 as well, with the same saturation caveat."
+           if payload["decision"]["fr11_met_on_v3"] else
+           "Still not met on the third set."),
         "",
-        "## Misses on v2, by configuration",
+        "## Misses, by set and configuration",
         "",
     ]
-    for name, block in results.items():
-        missed = ", ".join(block["v2"]["missed_questions"]) or "none"
-        lines.append(f"- {name}: {missed}")
+    for label in ("v2", "v3"):
+        lines.append(f"**{label}**")
+        lines.append("")
+        for name, block in results.items():
+            missed = ", ".join(block[label]["missed_questions"]) or "none"
+            lines.append(f"- {name}: {missed}")
+        lines.append("")
     lines.append("")
     (RESULTS / "holdout.md").write_text("\n".join(lines), encoding="utf-8")
 
     print("written: results/holdout.md, results/holdout.json")
     for name, block in results.items():
-        print(f"  {name:<26} v1 {block['v1']['recall']['mean']:.4f}  "
-              f"v2 {block['v2']['recall']['mean']:.4f}")
-    print(f"  gate: v1 answer {shipped['v1']['answer_rate']:.4f} refusal "
-          f"{shipped['v1']['refusal_accuracy']:.4f} | v2 answer "
-          f"{shipped['v2']['answer_rate']:.4f} refusal {shipped['v2']['refusal_accuracy']:.4f}")
-    print(f"  weights adopted: {weight_adopted} | FR-11 on v2: "
-          f"{payload['decision']['fr11_met_on_v2']} | refusal generalises: "
-          f"{payload['decision']['refusal_generalises']}")
+        print("  {:<26} {}".format(
+            name,
+            "  ".join(f"{label} {block[label]['recall']['mean']:.4f}" for label in SET_LABELS),
+        ))
+    print("  gate: " + " | ".join(
+        f"{label} answer {shipped[label]['answer_rate']:.4f} "
+        f"refusal {shipped[label]['refusal_accuracy']:.4f}"
+        for label in SET_LABELS
+    ))
+    print(f"  weights adopted: {weight_adopted} | FR-11 on v2/v3: "
+          f"{payload['decision']['fr11_met_on_v2']}/{payload['decision']['fr11_met_on_v3']}"
+          f" | refusal generalises on v3: {payload['decision']['refusal_generalises']}")
     return 0
 
 
