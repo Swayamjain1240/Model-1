@@ -46,7 +46,7 @@ repository is not reproducible, this receipt is the answer.
 | stage-2 encoder delta (dense 0.75 → 1.00, answer rate 0.29 → 0.96) | `results/embeddings.md` |
 | stage-2 reranker, held out by document (0.90, not adopted) | `results/rerank.md` |
 | safety suite: injections, tenant probes, log audit, degraded mode | `results/safety.md` |
-| out-of-sample set: retrieval generalises, the refusal gate does not | `results/holdout.md` |
+| out-of-sample sets (v2, v3): retrieval generalises, the refusal gate does not | `results/holdout.md` |
 
 ## 3. Known limitations (state them, do not hide them)
 

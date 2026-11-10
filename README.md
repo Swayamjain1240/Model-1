@@ -1,7 +1,7 @@
 # Atlas — a multi-tenant knowledge assistant that refuses to guess
 
-**Status: MVP and stage 2 complete except FR-11; one holdout test says the refusal gate
-does not generalise (M11).** M1–M6 built the measured MVP: corpus, hand-labeled
+**Status: MVP and stage 2 complete except FR-11; two independent holdout sets say the refusal
+gate does not generalise (M11, replicated in M13).** M1–M6 built the measured MVP: corpus, hand-labeled
 question set, index layer (ingest, chunking, store, hybrid retrieval), the first **measured
 baseline** on the frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75), the **answer
 path** (extractive cited answers, safety-first refusal gate), the **HTTP API** (`GET /v1/ask`,
@@ -57,6 +57,16 @@ the two classes overlap on the only feature it uses - the weakest answerable v2 
 refusal accuracy is 0.50, and it costs half the answerable questions. Theta is deliberately *not*
 moved, because tuning on the holdout is what makes a holdout worthless. The same run also shows
 the fusion weights are inert (all six settings score identically), so they stay at 1.0/1.0.
+
+M13 then asked whether v2 was unlucky. `eval/golden_set_v3.jsonl` appends a third set - 12 fresh
+answerable questions and 6 unanswerable ones drawn from topics the corpus does not cover, half of
+them deliberately close to what it does cover - and scores it for the first time
+(`results/holdout.md`, decisions now read off v3). Retrieval saturates again (recall@10 1.0000 for
+all five configurations), so it still cannot rank rankers. **The gate replicates its failure:**
+refusal accuracy 1.0000 on v1, 0.1667 on v2, **0.5000 on v3**, with the weakest answerable v3
+question at 0.322 against the strongest unanswerable one at 0.497 - overlapping, not separated.
+The best refusal accuracy any theta can reach on v3 is 0.83, and it costs answerable questions.
+So the v1 figure was in-sample, and the fix has to be a second signal rather than a threshold.
 
 
 ---
@@ -234,7 +244,7 @@ Every claim in this README comes from a target that rewrites a file in `results/
 | `make eval` | `results/eval_report.md` | recall@10 sparse 0.96 · hybrid 0.88 · dense 0.75 (frozen set) |
 | `make embed` | `results/embeddings.md` | encoder swap: dense recall@10 0.75 → 1.00, answer rate 0.29 → 0.96 |
 | `make ablation` | `results/ablation.md` | five configurations × two encoders, control arm, 95% Wilson intervals |
-| `make holdout` | `results/holdout.md` | out-of-sample v2 set: recall holds at 1.0000, refusal accuracy falls 1.00 → 0.17 |
+| `make holdout` | `results/holdout.md` | two out-of-sample sets: recall holds at 1.0000, refusal accuracy 1.00 → 0.17 (v2) → 0.50 (v3) |
 | `python -m eval.rerank_train` | `results/rerank.md` | trained reranker 0.90 held-out vs dense 1.00 → not adopted |
 | `make safety` | `results/safety.md` | 40/40 attacks refused, 0 tenant leaks, 0 PII in logs, 3/3 degraded |
 | `make bench` | `results/bench.md` | NFR-01 burst PASS: p95 43.25 ms at 10 users, 359 rps at 50 |

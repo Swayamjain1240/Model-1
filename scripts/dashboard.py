@@ -211,7 +211,7 @@ def holdout_panel() -> str:
     gate = report.get("confidence", {}).get("shipped", {})
     decision = report.get("decision", {})
     rows = []
-    for label in ("v1", "v2"):
+    for label in ("v1", "v2", "v3"):
         recall = shipped.get(label, {}).get("recall", {})
         rows.append([
             f"{label} (n={sets.get(label, {}).get('answerable', 0)}+"
@@ -221,14 +221,16 @@ def holdout_panel() -> str:
             f"{gate.get(label, {}).get('refusal_accuracy', 0):.3f}",
         ])
     verdict = (
-        "refusal does <strong>not</strong> generalise: theta was fitted to six questions"
+        "refusal does <strong>not</strong> generalise: theta was fitted to six questions "
+        "and two independent appended sets agree"
         if not decision.get("refusal_generalises") else "refusal holds out of sample"
     )
     return panel(
-        "Holdout — fit on v1, decide on v2", "holdout.json",
+        "Holdout — fit on v1, decide on v3", "holdout.json",
         table(["set", "recall@10", "answer rate", "refusal acc."], rows),
-        f"{verdict}. FR-11 on v2: "
-        f"{'met, but v2 saturates' if decision.get('fr11_met_on_v2') else 'not met'}.",
+        f"{verdict}. FR-11 on v3: "
+        f"{'met, but the appended sets saturate' if decision.get('fr11_met_on_v3') else 'not met'}"
+        ".",
     )
 
 
