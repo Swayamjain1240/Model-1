@@ -2,7 +2,9 @@
 
 **Status: MVP and stage 2 complete except FR-11; two independent holdout sets say the refusal
 gate does not generalise (M11, replicated in M13), and M14 added a second signal that recovers
-part of it: v3 refusal 0.50 → 0.67 with no answer lost, still open as FR-16.** M1–M6 built the measured MVP: corpus, hand-labeled
+part of it: v3 refusal 0.50 → 0.67 with no answer lost, still open as FR-16; M15 removed the
+topic-list answer (5 → 0) and measured the ranking defect it cannot reach (top-1 passage from the
+labelled document 39/48).** M1–M6 built the measured MVP: corpus, hand-labeled
 question set, index layer (ingest, chunking, store, hybrid retrieval), the first **measured
 baseline** on the frozen set (recall@10: sparse 0.96 · hybrid 0.88 · dense 0.75), the **answer
 path** (extractive cited answers, safety-first refusal gate), the **HTTP API** (`GET /v1/ask`,
@@ -81,6 +83,18 @@ words, the other is a question whose every word the corpus uses ("sports scholar
 vocabulary check can refute. FR-16 therefore stays open, and the refusal now says which of the two
 reasons applied (`refusal_reason`, `unseen`).
 
+M15 looked at what the answer *said*, rather than whether it was retrieved or refused. Reading the
+UI showed a failure no aggregate metric had caught: every policy document opens with a list of its
+own sections ("Limits on the number of attempts for a failed course, carry-forward rules and load
+restrictions for students with backlogs"), and because that line names every topic in the document
+it covers more query words than the sentence holding the rule. The fix is structural rather than
+fitted: a sentence of three or more items with no digit and no finite verb is a heading echo, and it
+is disqualified only when another sentence in the passage also matches a query term
+(`src/atlas/select.py`). Heading-echo answers went **5 → 0** across the three frozen sets, and all
+five replacements carry a number or a finite verb (`results/answer_selection.md`). The same report
+keeps the other half of the finding separate: the top-1 passage comes from the labelled document
+for only 18 of v1's 24 questions, 10 of 12 on v2 and 11 of 12 on v3 - a ranking defect, i.e. FR-11,
+which no sentence-scoring rule can reach.
 
 ---
 
@@ -186,6 +200,7 @@ src/atlas/
 ├── guard.py · breaker.py · obs.py   input guard · circuit breaker · log redaction (M9)
 ├── answer.py                        gate → extract → cite, or refuse (M4)
 ├── support.py                       second refusal signal: vocabulary novelty (M14)
+├── select.py                        sentence selection + heading-echo guard (M15)
 ├── server.py                        /v1/ask JSON API, stdlib only (M5)
 └── cli.py                           ingest · ask · stats · serve
 tests/                                unit, contract and integration (pytest)
@@ -194,6 +209,7 @@ bench/load_test.py                    NFR-01 concurrent load test
 eval/embeddings.py                    stage-2 encoder delta harness (M7)
 eval/rerank_train.py                  document-held-out reranker training (M8)
 eval/safety.py                        injection, tenancy, log and degraded suite (M9)
+eval/answer_selection.py              heading-echo guard, measured on all three frozen sets (M15)
 bench/sweep.py                        latency curve at 1/10/50 users, plus a soak (M10)
 scripts/dashboard.py                  results/*.json -> dashboard.html (M10)
 scripts/trace_sample.py               one request's stage waterfall (M10)
@@ -201,13 +217,14 @@ scripts/ci_gate_demo.py               proves the quality gate fails when it shou
 results/                              committed evidence: eval_report, calibration,
                                       fr11_diagnosis, ablation, latency, loadtest,
                                       robustness, embeddings, rerank, safety, bench,
-                                      soak, trace, ci_gate, handover, holdout, support
+                                      soak, trace, ci_gate, handover, holdout, support,
+                                      answer_selection
 dashboard.html                        the dashboard: opens from disk, no server needed
 docs/
 ├── … 12 design documents (01–12) …
 ├── 13-handover-runbook.md           how to run, prove, and extend (M6)
 ├── 14-request-trace.md              the life of one request, with measured stages (M10)
-├── adr/                             eight decision records, each with what it rejected (M10, M14)
+├── adr/                             nine decision records, each with what it rejected (M10, M14, M15)
 scripts/check_corpus.py               corpus gate
 scripts/check_limits.py               200-line ceiling gate
 .github/workflows/ci.yml              lint → size ceiling → tests → corpus → eval gate
@@ -262,6 +279,7 @@ Every claim in this README comes from a target that rewrites a file in `results/
 | `make ablation` | `results/ablation.md` | five configurations × two encoders, control arm, 95% Wilson intervals |
 | `make holdout` | `results/holdout.md` | two out-of-sample sets: recall holds at 1.0000, refusal accuracy 1.00 → 0.17 (v2) → 0.50 (v3) |
 | `make support` | `results/support.md` | second refusal signal: v3 refusal 0.50 → 0.67, v2 0.17 → 0.33, zero answers lost on any set |
+| `make answer-selection` | `results/answer_selection.md` | topic-list answers 5 → 0 on three sets; top-1 passage from the right document 18/24 · 10/12 · 11/12 |
 | `python -m eval.rerank_train` | `results/rerank.md` | trained reranker 0.90 held-out vs dense 1.00 → not adopted |
 | `make safety` | `results/safety.md` | 40/40 attacks refused, 0 tenant leaks, 0 PII in logs, 3/3 degraded |
 | `make bench` | `results/bench.md` | NFR-01 burst PASS: p95 43.25 ms at 10 users, 359 rps at 50 |
