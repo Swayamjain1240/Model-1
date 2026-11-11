@@ -48,6 +48,7 @@ repository is not reproducible, this receipt is the answer.
 | safety suite: injections, tenant probes, log audit, degraded mode | `results/safety.md` |
 | out-of-sample sets (v2, v3): retrieval generalises, the refusal gate does not | `results/holdout.md` |
 | second refusal signal: v3 0.50 → 0.67, v2 0.17 → 0.33, no answers lost | `results/support.md` |
+| answer selection: topic-list answers 5 → 0, top-1 from the right document 18/24 · 10/12 · 11/12 | `results/answer_selection.md` |
 
 ## 3. Known limitations (state them, do not hide them)
 
@@ -73,14 +74,18 @@ repository is not reproducible, this receipt is the answer.
   is ~10k chunks (NFR-03); beyond that, ANN storage.
 - **Not deployed**: the API has no deployment I/O here; the deepening work
   (stage 2) replaces the hashed-TF-IDF embedder seed with a real model.
-- **Answer selection can pick a table-of-contents line**: a chunk merges several sections, so
-  a document's opening summary ("Minimum attendance requirements, condonation rules, ...") can
-  out-score the sentence holding the figure, because it repeats more query words. Found by
-  reading the answer in the UI, not by a metric. A title-discounting fix was measured and
-  **rejected**: 6 of 24 answers changed and 2 got worse (they became the summary line), because
-  discounting title words flattens the scores and hands the tie to document order. A real fix
-  needs sentence-level labels, which the project does not have; recorded here, not patched with
-  a heuristic.
+- **Answer selection no longer returns a topic list, and the ranking underneath is still wrong**:
+  a chunk merges several sections, so a document's opening summary ("Minimum attendance
+  requirements, condonation rules, ...") out-scored the sentence holding the figure, because it
+  repeats more query words. A structural guard - three or more list items, no digit, no finite
+  verb, disqualified only when another sentence matches a query term - removed all five such
+  answers across the three frozen sets (`results/answer_selection.md`, ADR-0009). What it cannot
+  fix: the top-1 passage comes from the labelled document for only 18/24, 10/12 and 11/12
+  questions, so an answer can still be extracted from the wrong document. recall@10 is 1.0000
+  there, which makes that an FR-11 ranking defect rather than a selection one. The adoption rule
+  written first ("no coverage lost") was mis-specified - a topic list covers more query words
+  precisely because it lists them - and the correction is recorded in the report, not quietly
+  dropped.
 
 ## 4. Stage-2 roadmap in one paragraph
 
