@@ -1,0 +1,81 @@
+{
+  "provenance": {
+    "platform": "Windows-11-10.0.26300-SP0",
+    "python": "3.12.10",
+    "corpus": "corpus/campus (18 documents, frozen at M1)",
+    "commit": "c21190a",
+    "regenerate_with": "python -m eval.run_eval"
+  },
+  "method": "Does the answer return the document's topic list? (M15, FR-13)\n\nThe defect this measures was found by reading an answer in the UI, not by a metric: asking about\nthe minimum attendance returned \"Minimum attendance requirements, condonation rules, medical\nleave and the consequences of falling below the attendance bar\" - the document's own table of\ncontents, which names more of the question's words than the sentence holding the 75% rule.\n\nTwo things are measured per question set:\n\n1. **Is the top-1 passage even from the right document?**  A selector cannot answer from a passage\n   that does not contain the answer, so this is separated out rather than hidden inside an\n   \"answer quality\" number.\n2. **Among passages from the right document, how often is the answer a heading echo?**  This is\n   the only subset on which the selector is being judged.\n\nThe rule, fixed before the run: the guard may be adopted only if (a) heading-echo answers fall to\nzero on all three sets, and (b) no question's answer loses query-term coverage - the new sentence\nmust cover at least as many of the question's content terms as the sentence it replaced.\n\n**Criterion (b) was wrong, and the report says so.** It fired on exactly one question (v3-003),\nwhere the \"lost\" coverage is the topic list's own words: the echo covers more query terms\nprecisely because it enumerates every topic in the document. Requiring an answer to keep that\ncoverage is requiring it to keep the bug. The amended rule, applied to the same measurement, is\n(b') every replacement is still a statement - it carries a number or a finite verb - rather than\nanother topic list. Both readings are printed; the original one is not quietly dropped.\n\nThe guard itself has no fitted threshold (`src/atlas/select.py`), so there is no floor to tune and\nnothing to hold out: this report is a before/after count over every answerable question in all\nthree sets.\n\nWrites `results/answer_selection.md` and `results/answer_selection.json`.",
+  "encoder": "potion-base-8M",
+  "sets": {
+    "v1": {
+      "questions": 24,
+      "top1_document_correct": 18,
+      "echo_before": 1,
+      "echo_after": 0,
+      "coverage_lost": [],
+      "changed": [
+        {
+          "id": "a007",
+          "before": "Limits on the number of attempts for a failed course, carry-forward rules and load restrictions for students with backlogs. A student may carry forward a maximu",
+          "after": "A failed course may be attempted a maximum of 3 times in the regular end-term cycle and 2 times in the supplementary cycle; that is 5 total attempts. A student ",
+          "replacement_is_statement": true
+        }
+      ]
+    },
+    "v2": {
+      "questions": 12,
+      "top1_document_correct": 10,
+      "echo_before": 2,
+      "echo_after": 0,
+      "coverage_lost": [],
+      "changed": [
+        {
+          "id": "v2-006",
+          "before": "Fee schedule, instalment dates, late fee, refund slabs and the interaction with scholarships. The annual tuition is Rs 1,35,000, payable in two instalments of R",
+          "after": "The annual tuition is Rs 1,35,000, payable in two instalments of Rs 67,500 each, due on 20 August and 20 January. A payment made after the due date attracts a l",
+          "replacement_is_statement": true
+        },
+        {
+          "id": "v2-008",
+          "before": "Requirements, application timing, credit load and exit rules for the minor and honours tracks. A student in honours whose CGPA falls below 8.0 is moved to the n",
+          "after": "A student in honours whose CGPA falls below 8.0 is moved to the normal programme at the semester boundary, andhonours cannot be re-joined. Minor and honours may",
+          "replacement_is_statement": true
+        }
+      ]
+    },
+    "v3": {
+      "questions": 12,
+      "top1_document_correct": 11,
+      "echo_before": 2,
+      "echo_after": 0,
+      "coverage_lost": [
+        "v3-003"
+      ],
+      "changed": [
+        {
+          "id": "v3-003",
+          "before": "Limits on the number of attempts for a failed course, carry-forward rules and load restrictions for students with backlogs. A failed course may be attempted a m",
+          "after": "A failed course may be attempted a maximum of 3 times in the regular end-term cycle and 2 times in the supplementary cycle; that is 5 total attempts.",
+          "replacement_is_statement": true
+        },
+        {
+          "id": "v3-010",
+          "before": "Schedule, registration, fees, subject limits and the pass treatment of supplementary papers. A student may register for a maximum of 2 papers in one supplementa",
+          "after": "Registration for a supplementary paper closes 2 weeks before the cycle begins; the fee is Rs 1,000 per paper. A student may register for a maximum of 2 papers i",
+          "replacement_is_statement": true
+        }
+      ]
+    }
+  },
+  "decision": {
+    "adopted": true,
+    "adoption_rule": "(a) echo answers reach zero AND (b') every replacement is a statement",
+    "echo_answers_eliminated": true,
+    "replacements_are_statements": true,
+    "pre_registered_rule_passed": false,
+    "pre_registered_coverage_criterion_failed": true,
+    "pre_registration_note": "criterion (b) rewarded the echo: the topic list covers more query terms because it enumerates them, so removing it must lower literal coverage. (b') replaces it."
+  }
+}
