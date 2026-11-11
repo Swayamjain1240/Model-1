@@ -20,8 +20,9 @@ from .config import SETTINGS, Settings
 from .guard import scan
 from .interfaces import Answer, Citation, DependencyError, InputError, Passage
 from .retrieval import HybridIndex
+from .select import select
 from .support import novelty, refuses, unseen_terms
-from .text.tokenize import sentences, tokenize
+from .text.tokenize import tokenize
 
 # One breaker per process: generation is a shared dependency, not a per-request one.
 _GENERATOR_BREAKER = CircuitBreaker(threshold=SETTINGS.breaker_threshold)
@@ -153,37 +154,14 @@ def answer_query(
 
 
 def _extract(query: str, passage: Passage, *, max_sentences: int) -> str:
-    """The generator. `_failing()` is the fault injection the degraded path is measured with."""
+    """The generator. `_failing()` is the fault injection the degraded path is measured with.
+
+    Selection itself lives in `select.py` (FR-13, FR-18): the query-coverage scoring, and the
+    guard that stops a document's topic list from being returned as the answer (M15).
+    """
     if _failing():
         raise DependencyError("simulated generator failure")
-    """The best sentence run from ONE passage, verbatim, bounded (FR-13, FR-18).
-
-    Sentences are scored by how many unseen query tokens they cover; ties are
-    broken by document order, and the join is back in document order, so the
-    output is deterministic and reads naturally.
-    """
-    wanted = set(tokenize(query))
-    split = sentences(passage.text)
-    if not split:
-        return ""
-    split_tokens = [set(tokenize(sentence)) for sentence in split]
-    covered: set[str] = set()
-    chosen: list[int] = []
-    while len(chosen) < max_sentences:
-        best_idx, best_gain = -1, 0
-        for idx, tokens in enumerate(split_tokens):
-            if idx in chosen:
-                continue
-            gain = len((wanted - covered) & tokens)
-            if gain > best_gain:
-                best_idx, best_gain = idx, gain
-        if best_idx < 0:
-            break
-        chosen.append(best_idx)
-        covered |= split_tokens[best_idx]
-    if not chosen:
-        chosen = [0]  # query words absent from every sentence: the first-sentence fallback
-    return " ".join(split[idx] for idx in sorted(chosen))
+    return select(query, passage, max_sentences=max_sentences)
 
 
 def _ms(seconds: float) -> float:
